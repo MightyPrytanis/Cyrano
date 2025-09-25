@@ -1,0 +1,32 @@
+services:
+- type: web
+  name: cyrano-api
+  env: node
+  plan: free
+  buildCommand: npm run build
+  startCommand: npm start
+  healthCheckPath: /health
+  envVars:
+  - key: NODE_ENV
+    value: production
+  - key: DATABASE_URL
+    fromDatabase:
+      name: cyrano-db
+      property: connectionString
+  - key: OPENAI_API_KEY
+    sync: false
+  - key: ANTHROPIC_API_KEY
+    sync: false
+  - key: GEMINI_API_KEY
+    sync: false
+  - key: PERPLEXITY_API_KEY
+    sync: false
+  - key: SESSION_SECRET
+    generateValue: true
+  - key: JWT_SECRET
+    generateValue: true
+
+databases:
+- name: cyrano-db
+  databaseName: cyrano
+  plan: free

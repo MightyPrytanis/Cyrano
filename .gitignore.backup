@@ -1,0 +1,7 @@
+
+# Node.js dependencies
+node_modules/
+
+# Auth Server dependencies and secrets
+auth-server/node_modules/
+auth-server/.env

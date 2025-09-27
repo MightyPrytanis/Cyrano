@@ -275,11 +275,61 @@ app.get('/mcp/status', (req, res) => {
   res.json({ status: 'running', server: 'cyrano-mcp-http-bridge' });
 });
 
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    tools_count: 17,
+    uptime: process.uptime()
+  });
+});
+
+app.get('/mcp/tools/info', async (req, res) => {
+  try {
+    const toolsInfo = [
+      // Legal AI Tools
+      { category: 'Legal AI', ...documentAnalyzer.getToolDefinition() },
+      { category: 'Legal AI', ...legalComparator.getToolDefinition() },
+      { category: 'Legal AI', ...factChecker.getToolDefinition() },
+      { category: 'Legal AI', ...legalReviewer.getToolDefinition() },
+      { category: 'Legal AI', ...complianceChecker.getToolDefinition() },
+      { category: 'Legal AI', ...qualityAssessor.getToolDefinition() },
+      { category: 'Legal AI', ...workflowManager.getToolDefinition() },
+      { category: 'Legal AI', ...caseManager.getToolDefinition() },
+      { category: 'Legal AI', ...documentProcessor.getToolDefinition() },
+      { category: 'Legal AI', ...aiOrchestrator.getToolDefinition() },
+      
+      // Arkiver Tools
+      { category: 'Data Processing', ...extractConversations.getToolDefinition() },
+      { category: 'Data Processing', ...extractTextContent.getToolDefinition() },
+      { category: 'Data Processing', ...categorizeWithKeywords.getToolDefinition() },
+      { category: 'Data Processing', ...processWithRegex.getToolDefinition() },
+      { category: 'Data Processing', ...generateCategorizedFiles.getToolDefinition() },
+      { category: 'Data Processing', ...runExtractionPipeline.getToolDefinition() },
+      { category: 'Data Processing', ...createArkiverConfig.getToolDefinition() },
+    ];
+    
+    res.json({ 
+      tools: toolsInfo,
+      summary: {
+        total_tools: toolsInfo.length,
+        legal_ai_tools: toolsInfo.filter(t => t.category === 'Legal AI').length,
+        data_processing_tools: toolsInfo.filter(t => t.category === 'Data Processing').length
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get tools info' });
+  }
+});
+
 // Start server
 app.listen(port, () => {
   console.log(`Cyrano MCP HTTP Bridge running on port ${port}`);
   console.log(`Available endpoints:`);
+  console.log(`  GET  /health - Health check`);
   console.log(`  GET  /mcp/tools - List available tools`);
+  console.log(`  GET  /mcp/tools/info - Detailed tool information`);
   console.log(`  POST /mcp/execute - Execute a tool`);
   console.log(`  GET  /mcp/status - Server status`);
 });

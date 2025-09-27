@@ -68,6 +68,7 @@ export const documentAnalyzer = new (class extends BaseTool {
       summary: this.generateSummary(documentText),
       legal_elements: this.identifyLegalElements(documentText),
       recommendations: this.generateRecommendations(documentText),
+      focused_analysis: undefined as any,
     };
 
     if (focusAreas && focusAreas.length > 0) {

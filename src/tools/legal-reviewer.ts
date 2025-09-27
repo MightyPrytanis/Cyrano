@@ -70,6 +70,7 @@ export const legalReviewer = new (class extends BaseTool {
       completeness_review: this.reviewCompleteness(document),
       risk_assessment: this.assessRisks(document),
       recommendations: this.generateRecommendations(document, reviewType),
+      practice_area_specific: undefined as any,
     };
 
     if (practiceArea) {

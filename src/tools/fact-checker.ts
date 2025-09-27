@@ -71,6 +71,8 @@ export const factChecker = new (class extends BaseTool {
       confidence_score: this.calculateConfidenceScore(claim, context),
       verification_status: this.determineVerificationStatus(claim),
       recommendations: this.generateVerificationRecommendations(claim, level),
+      context_analysis: undefined as any,
+      source_verification: undefined as any,
     };
 
     if (context) {
@@ -101,6 +103,7 @@ export const factChecker = new (class extends BaseTool {
       unverifiable_claims: this.identifyUnverifiableClaims(claim),
       potential_issues: this.identifyPotentialIssues(claim),
       fact_check_confidence: this.calculateFactCheckConfidence(claim, level),
+      detailed_analysis: undefined as any,
     };
 
     if (level === 'exhaustive') {
@@ -387,6 +390,15 @@ export const factChecker = new (class extends BaseTool {
     return /\b(?:according to|based on|research shows|studies indicate|evidence shows)\b/gi.test(claim);
   }
 
+  public hasTemporalElements(claim: string): boolean {
+    return /\b(?:in|on|at|during|before|after|since|until)\s+\d{4}\b/gi.test(claim) ||
+           /\b(?:yesterday|today|tomorrow|last year|next month)\b/gi.test(claim);
+  }
+
+  public hasLegalElements(claim: string): boolean {
+    return /\b(?:law|legal|court|judge|attorney|contract|statute|regulation|compliance)\b/gi.test(claim);
+  }
+
   public isMeasurable(claim: string): boolean {
     return /\b\d+(?:\.\d+)?\s*(?:percent|%|dollars?|\$|years?|months?|days?)\b/gi.test(claim);
   }
@@ -411,6 +423,10 @@ export const factChecker = new (class extends BaseTool {
     return /\b(?:always|never|all|none|every|no|completely|entirely|totally)\b/gi.test(claim);
   }
 
+  public hasFactualElements(claim: string): boolean {
+    return /\b(?:fact|factual|true|false|proven|disproven|verified|evidence)\b/gi.test(claim);
+  }
+
   public identifyTechnicalTerms(claim: string): string[] {
     const technicalTerms = [
       'algorithm', 'protocol', 'system', 'process', 'methodology', 'framework',
@@ -420,10 +436,6 @@ export const factChecker = new (class extends BaseTool {
     return technicalTerms.filter(term => 
       claim.toLowerCase().includes(term)
     );
-  }
-
-  public hasSupportingEvidence(context: string): boolean {
-    return /\b(?:evidence|proof|data|research|study|analysis)\b/gi.test(context);
   }
 
   public addsClarity(context: string): boolean {

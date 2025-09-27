@@ -44,7 +44,7 @@ export const aiOrchestrator = new (class extends BaseTool {
   async execute(args: any) {
     try {
       const { task_description, ai_providers, orchestration_mode, parameters } = AIOrchestratorSchema.parse(args);
-      const orchestration = this.orchestrateAI(task_description, ai_providers, orchestration_mode, parameters);
+      const orchestration = this.orchestrateAI(task_description, orchestration_mode, ai_providers, parameters);
       return this.createSuccessResult(JSON.stringify(orchestration, null, 2));
     } catch (error) {
       return this.createErrorResult(`AI orchestration failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -60,14 +60,14 @@ export const aiOrchestrator = new (class extends BaseTool {
         timestamp: new Date().toISOString(),
         parameters: parameters || {},
       },
-      orchestration_plan: this.createOrchestrationPlan(task, providers, mode),
+      orchestration_plan: this.createOrchestrationPlan(task, mode, providers),
       execution_status: 'ready',
       estimated_duration: this.estimateDuration(task, mode),
       resource_requirements: this.calculateResourceRequirements(task, providers),
     };
   }
 
-  public createOrchestrationPlan(task: string, providers?: string[], mode: string): any {
+  public createOrchestrationPlan(task: string, mode: string, providers?: string[]): any {
     const availableProviders = providers || ['claude', 'gpt-4', 'gemini'];
     
     switch (mode) {

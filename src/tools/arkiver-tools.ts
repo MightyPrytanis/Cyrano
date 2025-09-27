@@ -35,14 +35,9 @@ export class ExtractConversationsTool extends BaseTool {
     try {
       // This would integrate with the actual Arkiver Python tools
       // For now, return a mock response
-      return {
-        content: [{
-          type: 'text',
-          text: `Extracted conversations from ${args.file_path}. This would integrate with Arkiver's extract_conversations tool.`
-        }]
-      };
+      return this.createSuccessResult(`Extracted conversations from ${args.file_path}. This would integrate with Arkiver's extract_conversations tool.`);
     } catch (error) {
-      return this.createErrorResult(`Failed to extract conversations: ${error.message}`);
+      return this.createErrorResult(`Failed to extract conversations: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 }
@@ -68,14 +63,9 @@ export class ExtractTextContentTool extends BaseTool {
 
   async execute(args: any) {
     try {
-      return {
-        content: [{
-          type: 'text',
-          text: `Extracted text content from ${args.file_path}. This would integrate with Arkiver's extract_text_content tool.`
-        }]
-      };
+      return this.createSuccessResult(`Extracted text content from ${args.file_path}. This would integrate with Arkiver's extract_text_content tool.`);
     } catch (error) {
-      return this.createErrorResult(`Failed to extract text content: ${error.message}`);
+      return this.createErrorResult(`Failed to extract text content: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 }
@@ -109,14 +99,9 @@ export class CategorizeWithKeywordsTool extends BaseTool {
 
   async execute(args: any) {
     try {
-      return {
-        content: [{
-          type: 'text',
-          text: `Categorized text using keywords from ${args.keywords_config_path}. This would integrate with Arkiver's categorize_with_keywords tool.`
-        }]
-      };
+      return this.createSuccessResult(`Categorized text using keywords from ${args.keywords_config_path}. This would integrate with Arkiver's categorize_with_keywords tool.`);
     } catch (error) {
-      return this.createErrorResult(`Failed to categorize with keywords: ${error.message}`);
+      return this.createErrorResult(`Failed to categorize with keywords: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 }
@@ -153,14 +138,9 @@ export class ProcessWithRegexTool extends BaseTool {
 
   async execute(args: any) {
     try {
-      return {
-        content: [{
-          type: 'text',
-          text: `Processed text with ${args.patterns.length} regex patterns. This would integrate with Arkiver's process_with_regex tool.`
-        }]
-      };
+      return this.createSuccessResult(`Processed text with ${args.patterns.length} regex patterns. This would integrate with Arkiver's process_with_regex tool.`);
     } catch (error) {
-      return this.createErrorResult(`Failed to process with regex: ${error.message}`);
+      return this.createErrorResult(`Failed to process with regex: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 }
@@ -194,14 +174,9 @@ export class GenerateCategorizedFilesTool extends BaseTool {
 
   async execute(args: any) {
     try {
-      return {
-        content: [{
-          type: 'text',
-          text: `Generated categorized files for ${args.processed_items.length} items. This would integrate with Arkiver's generate_categorized_files tool.`
-        }]
-      };
+      return this.createSuccessResult(`Generated categorized files for ${args.processed_items.length} items. This would integrate with Arkiver's generate_categorized_files tool.`);
     } catch (error) {
-      return this.createErrorResult(`Failed to generate categorized files: ${error.message}`);
+      return this.createErrorResult(`Failed to generate categorized files: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 }
@@ -230,14 +205,9 @@ export class RunExtractionPipelineTool extends BaseTool {
 
   async execute(args: any) {
     try {
-      return {
-        content: [{
-          type: 'text',
-          text: `Ran extraction pipeline. This would integrate with Arkiver's run_extraction_pipeline tool.`
-        }]
-      };
+      return this.createSuccessResult(`Ran extraction pipeline. This would integrate with Arkiver's run_extraction_pipeline tool.`);
     } catch (error) {
-      return this.createErrorResult(`Failed to run extraction pipeline: ${error.message}`);
+      return this.createErrorResult(`Failed to run extraction pipeline: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 }
@@ -274,14 +244,9 @@ export class CreateArkiverConfigTool extends BaseTool {
 
   async execute(args: any) {
     try {
-      return {
-        content: [{
-          type: 'text',
-          text: `Created Arkiver configuration file. This would integrate with Arkiver's create_arkiver_config tool.`
-        }]
-      };
+      return this.createSuccessResult(`Created Arkiver configuration file. This would integrate with Arkiver's create_arkiver_config tool.`);
     } catch (error) {
-      return this.createErrorResult(`Failed to create Arkiver config: ${error.message}`);
+      return this.createErrorResult(`Failed to create Arkiver config: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 }

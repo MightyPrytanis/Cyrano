@@ -84,7 +84,7 @@ app.post('/mcp/execute', (req, res) => {
     }
   };
   
-  const response = responses[tool] || {
+  const response = (responses as any)[tool] || {
     content: [{
       type: 'text',
       text: `Executed tool: ${tool}`

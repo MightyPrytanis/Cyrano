@@ -124,6 +124,11 @@ class CyranoMCPServer {
   }
 }
 
-// Start the server
-const server = new CyranoMCPServer();
-server.run().catch(console.error);
+// Export the class for use in other modules
+export { CyranoMCPServer };
+
+// Start the server only if this file is run directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const server = new CyranoMCPServer();
+  server.run().catch(console.error);
+}

@@ -170,11 +170,31 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
 // HTTP Routes
 app.get('/mcp/tools', async (req, res) => {
   try {
-    const response = await mcpServer.request(
-      { method: 'tools/list' },
-      { method: 'tools/list', params: {} }
-    );
-    res.json(response);
+    // Return the tools list directly
+    const tools = [
+      // Legal AI Tools
+      documentAnalyzer.getToolDefinition(),
+      legalComparator.getToolDefinition(),
+      factChecker.getToolDefinition(),
+      legalReviewer.getToolDefinition(),
+      complianceChecker.getToolDefinition(),
+      qualityAssessor.getToolDefinition(),
+      workflowManager.getToolDefinition(),
+      caseManager.getToolDefinition(),
+      documentProcessor.getToolDefinition(),
+      aiOrchestrator.getToolDefinition(),
+      
+      // Arkiver Tools
+      extractConversations.getToolDefinition(),
+      extractTextContent.getToolDefinition(),
+      categorizeWithKeywords.getToolDefinition(),
+      processWithRegex.getToolDefinition(),
+      generateCategorizedFiles.getToolDefinition(),
+      runExtractionPipeline.getToolDefinition(),
+      createArkiverConfig.getToolDefinition(),
+    ];
+    
+    res.json({ tools });
   } catch (error) {
     res.status(500).json({ error: 'Failed to get tools' });
   }
@@ -183,17 +203,66 @@ app.get('/mcp/tools', async (req, res) => {
 app.post('/mcp/execute', async (req, res) => {
   try {
     const { tool, input } = req.body;
-    const response = await mcpServer.request(
-      { method: 'tools/call' },
-      { 
-        method: 'tools/call', 
-        params: { 
-          name: tool, 
-          arguments: input 
-        } 
-      }
-    );
-    res.json(response);
+    
+    // Execute the tool directly
+    let result;
+    switch (tool) {
+      case 'document_analyzer':
+        result = await documentAnalyzer.execute(input);
+        break;
+      case 'legal_comparator':
+        result = await legalComparator.execute(input);
+        break;
+      case 'fact_checker':
+        result = await factChecker.execute(input);
+        break;
+      case 'legal_reviewer':
+        result = await legalReviewer.execute(input);
+        break;
+      case 'compliance_checker':
+        result = await complianceChecker.execute(input);
+        break;
+      case 'quality_assessor':
+        result = await qualityAssessor.execute(input);
+        break;
+      case 'workflow_manager':
+        result = await workflowManager.execute(input);
+        break;
+      case 'case_manager':
+        result = await caseManager.execute(input);
+        break;
+      case 'document_processor':
+        result = await documentProcessor.execute(input);
+        break;
+      case 'ai_orchestrator':
+        result = await aiOrchestrator.execute(input);
+        break;
+      case 'extract_conversations':
+        result = await extractConversations.execute(input);
+        break;
+      case 'extract_text_content':
+        result = await extractTextContent.execute(input);
+        break;
+      case 'categorize_with_keywords':
+        result = await categorizeWithKeywords.execute(input);
+        break;
+      case 'process_with_regex':
+        result = await processWithRegex.execute(input);
+        break;
+      case 'generate_categorized_files':
+        result = await generateCategorizedFiles.execute(input);
+        break;
+      case 'run_extraction_pipeline':
+        result = await runExtractionPipeline.execute(input);
+        break;
+      case 'create_arkiver_config':
+        result = await createArkiverConfig.execute(input);
+        break;
+      default:
+        throw new Error(`Unknown tool: ${tool}`);
+    }
+    
+    res.json(result);
   } catch (error) {
     res.status(500).json({ 
       success: false, 
@@ -206,11 +275,61 @@ app.get('/mcp/status', (req, res) => {
   res.json({ status: 'running', server: 'cyrano-mcp-http-bridge' });
 });
 
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    tools_count: 17,
+    uptime: process.uptime()
+  });
+});
+
+app.get('/mcp/tools/info', async (req, res) => {
+  try {
+    const toolsInfo = [
+      // Legal AI Tools
+      { category: 'Legal AI', ...documentAnalyzer.getToolDefinition() },
+      { category: 'Legal AI', ...legalComparator.getToolDefinition() },
+      { category: 'Legal AI', ...factChecker.getToolDefinition() },
+      { category: 'Legal AI', ...legalReviewer.getToolDefinition() },
+      { category: 'Legal AI', ...complianceChecker.getToolDefinition() },
+      { category: 'Legal AI', ...qualityAssessor.getToolDefinition() },
+      { category: 'Legal AI', ...workflowManager.getToolDefinition() },
+      { category: 'Legal AI', ...caseManager.getToolDefinition() },
+      { category: 'Legal AI', ...documentProcessor.getToolDefinition() },
+      { category: 'Legal AI', ...aiOrchestrator.getToolDefinition() },
+      
+      // Arkiver Tools
+      { category: 'Data Processing', ...extractConversations.getToolDefinition() },
+      { category: 'Data Processing', ...extractTextContent.getToolDefinition() },
+      { category: 'Data Processing', ...categorizeWithKeywords.getToolDefinition() },
+      { category: 'Data Processing', ...processWithRegex.getToolDefinition() },
+      { category: 'Data Processing', ...generateCategorizedFiles.getToolDefinition() },
+      { category: 'Data Processing', ...runExtractionPipeline.getToolDefinition() },
+      { category: 'Data Processing', ...createArkiverConfig.getToolDefinition() },
+    ];
+    
+    res.json({ 
+      tools: toolsInfo,
+      summary: {
+        total_tools: toolsInfo.length,
+        legal_ai_tools: toolsInfo.filter(t => t.category === 'Legal AI').length,
+        data_processing_tools: toolsInfo.filter(t => t.category === 'Data Processing').length
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get tools info' });
+  }
+});
+
 // Start server
 app.listen(port, () => {
   console.log(`Cyrano MCP HTTP Bridge running on port ${port}`);
   console.log(`Available endpoints:`);
+  console.log(`  GET  /health - Health check`);
   console.log(`  GET  /mcp/tools - List available tools`);
+  console.log(`  GET  /mcp/tools/info - Detailed tool information`);
   console.log(`  POST /mcp/execute - Execute a tool`);
   console.log(`  GET  /mcp/status - Server status`);
 });

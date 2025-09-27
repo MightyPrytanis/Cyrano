@@ -71,6 +71,7 @@ export const legalComparator = new (class extends BaseTool {
       similarity_score: this.calculateSimilarity(doc1, doc2),
       key_differences: this.identifyKeyDifferences(doc1, doc2),
       recommendations: this.generateComparisonRecommendations(doc1, doc2),
+      focused_comparison: undefined as any,
     };
 
     if (focusAreas && focusAreas.length > 0) {

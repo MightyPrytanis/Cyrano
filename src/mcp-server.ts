@@ -21,6 +21,7 @@ import { workflowManager } from './tools/workflow-manager.js';
 import { caseManager } from './tools/case-manager.js';
 import { documentProcessor } from './tools/document-processor.js';
 import { aiOrchestrator } from './tools/ai-orchestrator.js';
+import { systemStatus } from './tools/system-status.js';
 
 class CyranoMCPServer {
   private server: Server;
@@ -56,6 +57,7 @@ class CyranoMCPServer {
           caseManager.getToolDefinition(),
           documentProcessor.getToolDefinition(),
           aiOrchestrator.getToolDefinition(),
+          systemStatus.getToolDefinition(),
         ],
       };
     });
@@ -97,6 +99,9 @@ class CyranoMCPServer {
             break;
           case 'ai_orchestrator':
             result = await aiOrchestrator.execute(args);
+            break;
+          case 'system_status':
+            result = await systemStatus.execute(args);
             break;
           default:
             throw new Error(`Unknown tool: ${name}`);

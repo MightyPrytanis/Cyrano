@@ -1,5 +1,6 @@
 import { BaseTool } from './base-tool.js';
 import { z } from 'zod';
+import { apiValidator } from '../utils/api-validator.js';
 
 const AIOrchestratorSchema = z.object({
   task_description: z.string().describe('Description of the task to orchestrate'),
@@ -44,7 +45,33 @@ export const aiOrchestrator = new (class extends BaseTool {
   async execute(args: any) {
     try {
       const { task_description, ai_providers, orchestration_mode, parameters } = AIOrchestratorSchema.parse(args);
-      const orchestration = this.orchestrateAI(task_description, orchestration_mode, ai_providers, parameters);
+      
+      // Validate API providers before orchestration
+      const providersToUse = ai_providers || ['openai', 'anthropic', 'google'];
+      const validation = apiValidator.validateAllProviders(providersToUse);
+      
+      if (!validation.valid) {
+        const configSummary = apiValidator.getConfigSummary();
+        return this.createErrorResult(
+          `AI orchestration failed - API configuration issues:\n` +
+          `${validation.errors.join('\n')}\n\n` +
+          `Available providers: ${configSummary.configured.join(', ') || 'none'}\n` +
+          `Missing providers: ${configSummary.missing.join(', ')}\n\n` +
+          `Please configure API keys in environment variables to enable AI integration.`
+        );
+      }
+      
+      if (!apiValidator.hasAnyValidProviders()) {
+        return this.createErrorResult(
+          `No AI providers configured. Please set API keys for at least one provider:\n` +
+          `- OPENAI_API_KEY (starts with sk-)\n` +
+          `- ANTHROPIC_API_KEY (starts with sk-ant-)\n` +
+          `- GEMINI_API_KEY\n` +
+          `- PERPLEXITY_API_KEY (starts with pplx-)`
+        );
+      }
+      
+      const orchestration = this.orchestrateAI(task_description, orchestration_mode, providersToUse, parameters);
       return this.createSuccessResult(JSON.stringify(orchestration, null, 2));
     } catch (error) {
       return this.createErrorResult(`AI orchestration failed: ${error instanceof Error ? error.message : String(error)}`);

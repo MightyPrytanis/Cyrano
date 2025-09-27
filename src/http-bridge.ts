@@ -27,6 +27,7 @@ import { workflowManager } from './tools/workflow-manager.js';
 import { caseManager } from './tools/case-manager.js';
 import { documentProcessor } from './tools/document-processor.js';
 import { aiOrchestrator } from './tools/ai-orchestrator.js';
+import { systemStatus } from './tools/system-status.js';
 
 // Import Arkiver tools
 import {
@@ -74,6 +75,7 @@ mcpServer.setRequestHandler(ListToolsRequestSchema, async () => {
       caseManager.getToolDefinition(),
       documentProcessor.getToolDefinition(),
       aiOrchestrator.getToolDefinition(),
+      systemStatus.getToolDefinition(),
       
       // Arkiver Data Extraction Tools
       extractConversations.getToolDefinition(),
@@ -124,6 +126,9 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
             break;
           case 'ai_orchestrator':
             result = await aiOrchestrator.execute(args);
+            break;
+          case 'system_status':
+            result = await systemStatus.execute(args);
             break;
             
           // Arkiver Data Extraction Tools
@@ -183,6 +188,7 @@ app.get('/mcp/tools', async (req, res) => {
       caseManager.getToolDefinition(),
       documentProcessor.getToolDefinition(),
       aiOrchestrator.getToolDefinition(),
+      systemStatus.getToolDefinition(),
       
       // Arkiver Tools
       extractConversations.getToolDefinition(),
@@ -236,6 +242,9 @@ app.post('/mcp/execute', async (req, res) => {
         break;
       case 'ai_orchestrator':
         result = await aiOrchestrator.execute(input);
+        break;
+      case 'system_status':
+        result = await systemStatus.execute(input);
         break;
       case 'extract_conversations':
         result = await extractConversations.execute(input);
@@ -299,6 +308,7 @@ app.get('/mcp/tools/info', async (req, res) => {
       { category: 'Legal AI', ...caseManager.getToolDefinition() },
       { category: 'Legal AI', ...documentProcessor.getToolDefinition() },
       { category: 'Legal AI', ...aiOrchestrator.getToolDefinition() },
+      { category: 'System', ...systemStatus.getToolDefinition() },
       
       // Arkiver Tools
       { category: 'Data Processing', ...extractConversations.getToolDefinition() },

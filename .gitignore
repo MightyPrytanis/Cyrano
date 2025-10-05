@@ -64,4 +64,6 @@ coverage/
 
 # Misc
 *.tgz
-*.tar.gz
+*.tar.gzCyrano/
+LexFiat/
+SwimMeet/

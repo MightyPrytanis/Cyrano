@@ -22,6 +22,16 @@ import { caseManager } from './tools/case-manager.js';
 import { documentProcessor } from './tools/document-processor.js';
 import { aiOrchestrator } from './tools/ai-orchestrator.js';
 import { systemStatus } from './tools/system-status.js';
+import { authTool } from './tools/auth';  // Add auth tool import
+import {
+  extractConversations,
+  extractTextContent,
+  categorizeWithKeywords,
+  processWithRegex,
+  generateCategorizedFiles,
+  runExtractionPipeline,
+  createArkiverConfig
+} from './tools/arkiver-tools.js';
 
 class CyranoMCPServer {
   private server: Server;
@@ -47,6 +57,7 @@ class CyranoMCPServer {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       return {
         tools: [
+          authTool.getToolDefinition(),  // Add auth tool first
           documentAnalyzer.getToolDefinition(),
           legalComparator.getToolDefinition(),
           factChecker.getToolDefinition(),
@@ -58,6 +69,13 @@ class CyranoMCPServer {
           documentProcessor.getToolDefinition(),
           aiOrchestrator.getToolDefinition(),
           systemStatus.getToolDefinition(),
+          extractConversations.getToolDefinition(),
+          extractTextContent.getToolDefinition(),
+          categorizeWithKeywords.getToolDefinition(),
+          processWithRegex.getToolDefinition(),
+          generateCategorizedFiles.getToolDefinition(),
+          runExtractionPipeline.getToolDefinition(),
+          createArkiverConfig.getToolDefinition(),
         ],
       };
     });
@@ -70,6 +88,9 @@ class CyranoMCPServer {
         let result: CallToolResult;
 
         switch (name) {
+          case 'auth':  // Add auth tool case
+            result = await authTool.execute(args);
+            break;
           case 'document_analyzer':
             result = await documentAnalyzer.execute(args);
             break;
@@ -102,6 +123,27 @@ class CyranoMCPServer {
             break;
           case 'system_status':
             result = await systemStatus.execute(args);
+            break;
+          case 'extract_conversations':
+            result = await extractConversations.execute(args);
+            break;
+          case 'extract_text_content':
+            result = await extractTextContent.execute(args);
+            break;
+          case 'categorize_with_keywords':
+            result = await categorizeWithKeywords.execute(args);
+            break;
+          case 'process_with_regex':
+            result = await processWithRegex.execute(args);
+            break;
+          case 'generate_categorized_files':
+            result = await generateCategorizedFiles.execute(args);
+            break;
+          case 'run_extraction_pipeline':
+            result = await runExtractionPipeline.execute(args);
+            break;
+          case 'create_arkiver_config':
+            result = await createArkiverConfig.execute(args);
             break;
           default:
             throw new Error(`Unknown tool: ${name}`);

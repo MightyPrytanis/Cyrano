@@ -301,6 +301,29 @@ app.get('/mcp/status', (req, res) => {
   res.json({ status: 'running', server: 'cyrano-mcp-http-bridge' });
 });
 
+// GoodCounsel API endpoint for LexFiat integration
+app.get('/api/good-counsel/overview', async (req, res) => {
+  try {
+    const result = await goodCounsel.execute({});
+    const textContent = result.content[0]?.text;
+    if (textContent && typeof textContent === 'string') {
+      try {
+        const parsed = JSON.parse(textContent);
+        res.json(parsed);
+      } catch (parseError) {
+        res.json({ content: textContent });
+      }
+    } else {
+      res.json({ error: 'No content available' });
+    }
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Failed to get GoodCounsel overview',
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+});
+
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'healthy',

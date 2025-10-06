@@ -22,6 +22,43 @@ The tools return computed responses based on basic text processing, not real AI 
 - Authentication and API key validation
 - Error handling for API failures
 
+## Quickstart (Common Commands)
+
+- Install dependencies
+  - npm ci
+- Build TypeScript
+  - npm run build
+- Run MCP server (stdio)
+  - npm run mcp
+- Run HTTP bridge (REST API on port 5002 by default)
+  - npm run http
+  - Or: CYRANO_MODE=http npm run dev
+- Start compiled build
+  - npm start
+- Clean and rebuild
+  - npm run rebuild
+- Integration tests (shell script)
+  - npm test
+  - Prereqs: curl and jq available on PATH
+
+Single-run examples (HTTP bridge running)
+- List tools
+  - curl -s http://localhost:5002/mcp/tools | jq
+- Execute a tool (document_analyzer)
+  - curl -s -X POST http://localhost:5002/mcp/execute \
+    -H "Content-Type: application/json" \
+    -d '{"tool": "document_analyzer", "input": {"document_text": "Test document", "analysis_type": "summary"}}' | jq
+- Health/status
+  - curl -s http://localhost:5002/health | jq
+  - curl -s http://localhost:5002/mcp/status | jq
+
+Optional: Auth server
+- From auth-server/: npm install; npm run dev (or npm start)
+- Environment: see auth-server/.env.example
+
+Default ports
+- HTTP bridge default: 5002 (override via PORT)
+
 ## Verification
 
 Run the reality check to see the current limitations:

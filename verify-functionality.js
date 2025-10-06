@@ -103,7 +103,7 @@ async function testAPIKeyValidation() {
                 tool: 'ai_orchestrator',
                 input: {
                     task_description: "Analyze this legal document using multiple AI providers",
-                    ai_providers: ["openai", "anthropic", "google"]
+                    ai_providers: ["perplexity", "openai", "anthropic", "google", "xai", "deepseek"]
                 }
             })
         });

@@ -1,5 +1,7 @@
 import { BaseTool } from './base-tool.js';
 import { z } from 'zod';
+import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 
 const DocumentAnalyzerSchema = z.object({
   document_text: z.string().describe('The legal document text to analyze'),
@@ -40,42 +42,129 @@ export const documentAnalyzer = new (class extends BaseTool {
     try {
       const { document_text, analysis_type, focus_areas } = DocumentAnalyzerSchema.parse(args);
 
-      // Simulate document analysis
-      const analysis = this.performAnalysis(document_text, analysis_type, focus_areas);
+      // Validate API keys
+      const openaiKey = process.env.OPENAI_API_KEY;
+      const anthropicKey = process.env.ANTHROPIC_API_KEY;
+
+      if (!openaiKey && !anthropicKey) {
+        return this.createErrorResult('No AI API keys configured. Please set OPENAI_API_KEY or ANTHROPIC_API_KEY environment variables.');
+      }
+
+      // Use Anthropic as primary, fallback to OpenAI
+      let analysis;
+      try {
+        if (anthropicKey) {
+          analysis = await this.performRealAnalysis(document_text, analysis_type, focus_areas, 'anthropic');
+        } else if (openaiKey) {
+          analysis = await this.performRealAnalysis(document_text, analysis_type, focus_areas, 'openai');
+        }
+      } catch (aiError) {
+        return this.createErrorResult(`AI analysis failed: ${aiError instanceof Error ? aiError.message : String(aiError)}`);
+      }
 
       return this.createSuccessResult(JSON.stringify(analysis, null, 2), {
         analysis_type,
         word_count: document_text.split(' ').length,
         focus_areas: focus_areas || [],
+        ai_provider: anthropicKey ? 'anthropic' : 'openai',
       });
     } catch (error) {
       return this.createErrorResult(`Document analysis failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
-  public performAnalysis(documentText: string, analysisType: string, focusAreas?: string[]) {
+  public async performRealAnalysis(documentText: string, analysisType: string, focusAreas: string[] | undefined, provider: 'openai' | 'anthropic') {
     const wordCount = documentText.split(' ').length;
     const paragraphCount = documentText.split('\n\n').length;
-    
+
+    // Create analysis prompt based on type
+    const prompt = this.buildAnalysisPrompt(documentText, analysisType, focusAreas);
+
+    // Get AI response
+    const aiResponse = await this.callAIProvider(prompt, provider);
+
+    // Parse and structure the response
     const analysis = {
       metadata: {
         word_count: wordCount,
         paragraph_count: paragraphCount,
         analysis_type: analysisType,
         timestamp: new Date().toISOString(),
+        ai_provider: provider,
       },
-      key_points: this.extractKeyPoints(documentText),
-      summary: this.generateSummary(documentText),
-      legal_elements: this.identifyLegalElements(documentText),
-      recommendations: this.generateRecommendations(documentText),
-      focused_analysis: undefined as any,
+      ai_analysis: aiResponse,
+      key_points: this.extractKeyPoints(aiResponse),
+      summary: this.generateSummary(aiResponse),
+      legal_elements: this.identifyLegalElements(documentText), // Keep basic extraction for document
+      recommendations: this.generateRecommendations(aiResponse),
+      focused_analysis: focusAreas ? await this.performFocusedAnalysis(documentText, focusAreas, provider) : undefined,
     };
 
-    if (focusAreas && focusAreas.length > 0) {
-      analysis.focused_analysis = this.performFocusedAnalysis(documentText, focusAreas);
+    return analysis;
+  }
+
+  public buildAnalysisPrompt(documentText: string, analysisType: string, focusAreas?: string[]): string {
+    let prompt = `Analyze this legal document and provide a ${analysisType} analysis:\n\n${documentText}\n\n`;
+
+    switch (analysisType) {
+      case 'comprehensive':
+        prompt += `Provide a comprehensive legal analysis including:
+- Key legal issues and implications
+- Contractual obligations and rights
+- Potential risks and liabilities
+- Compliance considerations
+- Recommendations for the client`;
+        break;
+      case 'summary':
+        prompt += 'Provide a concise summary of the main legal points and implications.';
+        break;
+      case 'key_points':
+        prompt += 'Extract and list the most important legal points, obligations, and provisions.';
+        break;
+      case 'metadata':
+        prompt += 'Extract metadata including parties, dates, jurisdiction, and key legal concepts.';
+        break;
     }
 
-    return analysis;
+    if (focusAreas && focusAreas.length > 0) {
+      prompt += `\n\nFocus areas: ${focusAreas.join(', ')}`;
+    }
+
+    return prompt;
+  }
+
+  public async callAIProvider(prompt: string, provider: 'openai' | 'anthropic'): Promise<string> {
+    if (provider === 'anthropic') {
+      const anthropic = new Anthropic({
+        apiKey: process.env.ANTHROPIC_API_KEY,
+      });
+
+      const response = await anthropic.messages.create({
+        model: 'claude-3-sonnet-20240229',
+        max_tokens: 4000,
+        messages: [{
+          role: 'user',
+          content: prompt,
+        }],
+      });
+
+      return response.content[0].type === 'text' ? response.content[0].text : 'Analysis failed';
+    } else {
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: [{
+          role: 'user',
+          content: prompt,
+        }],
+        max_tokens: 4000,
+      });
+
+      return response.choices[0].message.content || 'Analysis failed';
+    }
   }
 
   public extractKeyPoints(text: string): string[] {
@@ -110,26 +199,36 @@ export const documentAnalyzer = new (class extends BaseTool {
     ];
   }
 
-  public performFocusedAnalysis(text: string, focusAreas: string[]): Record<string, any> {
+  public async performFocusedAnalysis(text: string, focusAreas: string[], provider: 'openai' | 'anthropic'): Promise<Record<string, any>> {
     const result: Record<string, any> = {};
     
-    focusAreas.forEach(area => {
+    for (const area of focusAreas) {
       switch (area.toLowerCase()) {
         case 'contracts':
-          result.contracts = this.analyzeContracts(text);
+          result.contracts = await this.analyzeWithAI(text, 'contracts', provider);
           break;
         case 'liability':
-          result.liability = this.analyzeLiability(text);
+          result.liability = await this.analyzeWithAI(text, 'liability', provider);
           break;
         case 'compliance':
-          result.compliance = this.analyzeCompliance(text);
+          result.compliance = await this.analyzeWithAI(text, 'compliance', provider);
           break;
         default:
           result[area] = `Analysis for ${area} not implemented`;
       }
-    });
+    }
     
     return result;
+  }
+
+  public async analyzeWithAI(text: string, focusArea: string, provider: 'openai' | 'anthropic'): Promise<any> {
+    const prompt = `Analyze this legal document focusing specifically on ${focusArea}:
+
+${text}
+
+Provide a detailed analysis of ${focusArea} aspects, including key findings, potential issues, and recommendations.`;
+
+    return await this.callAIProvider(prompt, provider);
   }
 
   public analyzeContracts(text: string): any {

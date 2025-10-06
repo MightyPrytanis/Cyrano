@@ -47,7 +47,7 @@ export const aiOrchestrator = new (class extends BaseTool {
       const { task_description, ai_providers, orchestration_mode, parameters } = AIOrchestratorSchema.parse(args);
       
       // Validate API providers before orchestration
-      const providersToUse = ai_providers || ['openai', 'anthropic', 'google'];
+      const providersToUse = ai_providers || ['perplexity', 'openai', 'anthropic', 'google', 'xai', 'deepseek'];
       const validation = apiValidator.validateAllProviders(providersToUse);
       
       if (!validation.valid) {
@@ -64,10 +64,12 @@ export const aiOrchestrator = new (class extends BaseTool {
       if (!apiValidator.hasAnyValidProviders()) {
         return this.createErrorResult(
           `No AI providers configured. Please set API keys for at least one provider:\n` +
+          `- PERPLEXITY_API_KEY (starts with pplx-)\n` +
           `- OPENAI_API_KEY (starts with sk-)\n` +
           `- ANTHROPIC_API_KEY (starts with sk-ant-)\n` +
           `- GEMINI_API_KEY\n` +
-          `- PERPLEXITY_API_KEY (starts with pplx-)`
+          `- XAI_API_KEY (starts with xai-)\n` +
+          `- DEEPSEEK_API_KEY (starts with sk-)`
         );
       }
       

@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { db } from '../db'; // Import database connection
-import { users } from '../schema'; // Import schema
+import { db } from '../db.js'; // Import database connection
+import { users } from '../schema.js'; // Import schema
 import { eq } from 'drizzle-orm';
 import { BaseTool } from './base-tool.js';
 

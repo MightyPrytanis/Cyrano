@@ -10,7 +10,10 @@ export interface APIConfig {
   openai?: string;
   anthropic?: string;
   google?: string;
+  gemini?: string;
   perplexity?: string;
+  xai?: string;
+  deepseek?: string;
 }
 
 export class APIValidator {
@@ -33,8 +36,11 @@ export class APIValidator {
     this.config = {
       openai: process.env.OPENAI_API_KEY,
       anthropic: process.env.ANTHROPIC_API_KEY,
-      google: process.env.GEMINI_API_KEY,
-      perplexity: process.env.PERPLEXITY_API_KEY
+      google: process.env.GOOGLE_API_KEY,
+      gemini: process.env.GEMINI_API_KEY,
+      perplexity: process.env.PERPLEXITY_API_KEY,
+      xai: process.env.XAI_API_KEY,
+      deepseek: process.env.DEEPSEEK_API_KEY,
     };
   }
 
@@ -63,8 +69,8 @@ export class APIValidator {
 
       case 'google':
       case 'gemini':
-        if (!this.config.google) {
-          return { valid: false, error: 'GEMINI_API_KEY environment variable is required for Google AI integration' };
+        if (!this.config.google && !this.config.gemini) {
+          return { valid: false, error: 'GEMINI_API_KEY or GOOGLE_API_KEY environment variable is required for Google AI integration' };
         }
         return { valid: true };
 
@@ -77,8 +83,27 @@ export class APIValidator {
         }
         return { valid: true };
 
+      case 'xai':
+      case 'grok':
+        if (!this.config.xai) {
+          return { valid: false, error: 'XAI_API_KEY environment variable is required for xAI Grok integration' };
+        }
+        if (!this.config.xai.startsWith('xai-')) {
+          return { valid: false, error: 'Invalid xAI API key format (must start with xai-)' };
+        }
+        return { valid: true };
+
+      case 'deepseek':
+        if (!this.config.deepseek) {
+          return { valid: false, error: 'DEEPSEEK_API_KEY environment variable is required for DeepSeek integration' };
+        }
+        if (!this.config.deepseek.startsWith('sk-')) {
+          return { valid: false, error: 'Invalid DeepSeek API key format (must start with sk-)' };
+        }
+        return { valid: true };
+
       default:
-        return { valid: false, error: `Unknown AI provider: ${provider}. Supported providers: openai, anthropic, google, perplexity` };
+        return { valid: false, error: `Unknown AI provider: ${provider}. Supported providers: openai, anthropic, google, perplexity, xai, deepseek` };
     }
   }
 
@@ -100,12 +125,14 @@ export class APIValidator {
 
   public getAvailableProviders(): string[] {
     const available: string[] = [];
-    
+
     if (this.config.openai) available.push('openai');
-    if (this.config.anthropic) available.push('anthropic');  
-    if (this.config.google) available.push('google');
+    if (this.config.anthropic) available.push('anthropic');
+    if (this.config.google || this.config.gemini) available.push('google');
     if (this.config.perplexity) available.push('perplexity');
-    
+    if (this.config.xai) available.push('xai');
+    if (this.config.deepseek) available.push('deepseek');
+
     return available;
   }
 
@@ -114,7 +141,7 @@ export class APIValidator {
   }
 
   public getConfigSummary(): { configured: string[]; missing: string[]; total: number } {
-    const allProviders = ['openai', 'anthropic', 'google', 'perplexity'];
+    const allProviders = ['openai', 'anthropic', 'google', 'perplexity', 'xai', 'deepseek'];
     const configured = this.getAvailableProviders();
     const missing = allProviders.filter(p => !configured.includes(p));
     

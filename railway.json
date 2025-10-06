@@ -1,16 +1,15 @@
 {
-  "build": {
-    "buildCommand": "npm run build"
-  },
+  "build": { "buildCommand": "npm run build" },
   "deploy": {
-    "startCommand": "npm start",
+    "startCommand": "node dist/index.js --http",
     "restartPolicyType": "ON_FAILURE",
     "healthcheckPath": "/health"
   },
   "environments": {
     "production": {
       "variables": {
-        "NODE_ENV": "production"
+        "NODE_ENV": "production",
+        "CYRANO_MODE": "http"
       }
     }
   }

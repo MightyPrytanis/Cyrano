@@ -13,6 +13,7 @@ import { z } from 'zod';
 // Import tool implementations
 import { documentAnalyzer } from './tools/document-analyzer.js';
 import { legalComparator } from './tools/legal-comparator.js';
+import { goodCounsel } from './tools/goodcounsel.js';
 import { factChecker } from './tools/fact-checker.js';
 import { legalReviewer } from './tools/legal-reviewer.js';
 import { complianceChecker } from './tools/compliance-checker.js';
@@ -22,7 +23,7 @@ import { caseManager } from './tools/case-manager.js';
 import { documentProcessor } from './tools/document-processor.js';
 import { aiOrchestrator } from './tools/ai-orchestrator.js';
 import { systemStatus } from './tools/system-status.js';
-import { authTool } from './tools/auth';  // Add auth tool import
+import { authTool } from './tools/auth.js';  // Add auth tool import
 import {
   extractConversations,
   extractTextContent,
@@ -60,6 +61,7 @@ class CyranoMCPServer {
           authTool.getToolDefinition(),  // Add auth tool first
           documentAnalyzer.getToolDefinition(),
           legalComparator.getToolDefinition(),
+          goodCounsel.getToolDefinition(),
           factChecker.getToolDefinition(),
           legalReviewer.getToolDefinition(),
           complianceChecker.getToolDefinition(),
@@ -96,6 +98,9 @@ class CyranoMCPServer {
             break;
           case 'legal_comparator':
             result = await legalComparator.execute(args);
+            break;
+          case 'good_counsel':
+            result = await goodCounsel.execute(args);
             break;
           case 'fact_checker':
             result = await factChecker.execute(args);

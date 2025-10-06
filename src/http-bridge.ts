@@ -7,6 +7,14 @@
 
 import express from 'express';
 import cors from 'cors';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
+console.log('Environment variables loaded:');
+console.log('PERPLEXITY_API_KEY exists:', !!process.env.PERPLEXITY_API_KEY);
+console.log('OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
+console.log('ANTHROPIC_API_KEY exists:', !!process.env.ANTHROPIC_API_KEY);
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -19,6 +27,7 @@ import {
 // Import tool implementations
 import { documentAnalyzer } from './tools/document-analyzer.js';
 import { legalComparator } from './tools/legal-comparator.js';
+import { goodCounsel } from './tools/goodcounsel.js';
 import { factChecker } from './tools/fact-checker.js';
 import { legalReviewer } from './tools/legal-reviewer.js';
 import { complianceChecker } from './tools/compliance-checker.js';
@@ -67,6 +76,7 @@ mcpServer.setRequestHandler(ListToolsRequestSchema, async () => {
       // Legal AI Tools
       documentAnalyzer.getToolDefinition(),
       legalComparator.getToolDefinition(),
+      goodCounsel.getToolDefinition(),
       factChecker.getToolDefinition(),
       legalReviewer.getToolDefinition(),
       complianceChecker.getToolDefinition(),
@@ -102,6 +112,9 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
             break;
           case 'legal_comparator':
             result = await legalComparator.execute(args);
+            break;
+          case 'good_counsel':
+            result = await goodCounsel.execute(args);
             break;
           case 'fact_checker':
             result = await factChecker.execute(args);
@@ -180,6 +193,7 @@ app.get('/mcp/tools', async (req, res) => {
       // Legal AI Tools
       documentAnalyzer.getToolDefinition(),
       legalComparator.getToolDefinition(),
+      goodCounsel.getToolDefinition(),
       factChecker.getToolDefinition(),
       legalReviewer.getToolDefinition(),
       complianceChecker.getToolDefinition(),
@@ -218,6 +232,9 @@ app.post('/mcp/execute', async (req, res) => {
         break;
       case 'legal_comparator':
         result = await legalComparator.execute(input);
+        break;
+      case 'good_counsel':
+        result = await goodCounsel.execute(input);
         break;
       case 'fact_checker':
         result = await factChecker.execute(input);
@@ -289,7 +306,7 @@ app.get('/health', (req, res) => {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
-    tools_count: 17,
+    tools_count: 18,
     uptime: process.uptime()
   });
 });
@@ -300,6 +317,7 @@ app.get('/mcp/tools/info', async (req, res) => {
       // Legal AI Tools
       { category: 'Legal AI', ...documentAnalyzer.getToolDefinition() },
       { category: 'Legal AI', ...legalComparator.getToolDefinition() },
+      { category: 'Legal AI', ...goodCounsel.getToolDefinition() },
       { category: 'Legal AI', ...factChecker.getToolDefinition() },
       { category: 'Legal AI', ...legalReviewer.getToolDefinition() },
       { category: 'Legal AI', ...complianceChecker.getToolDefinition() },

@@ -2,6 +2,7 @@ import { BaseTool } from './base-tool.js';
 import { z } from 'zod';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
+import { CosmosIntegration } from '../services/cosmos-integration.js';
 
 const GoodCounselSchema = z.object({
   context: z.string().describe('Current case context, workflow status, or situation requiring guidance'),
@@ -12,6 +13,13 @@ const GoodCounselSchema = z.object({
 });
 
 export const goodCounsel = new (class extends BaseTool {
+  public cosmosIntegration: CosmosIntegration;
+
+  constructor() {
+    super();
+    this.cosmosIntegration = new CosmosIntegration();
+  }
+
   getToolDefinition() {
     return {
       name: 'good_counsel',
@@ -121,6 +129,17 @@ export const goodCounsel = new (class extends BaseTool {
     // Get AI response
     const aiResponse = await this.callAIProvider(prompt, provider);
 
+    // Get Cosmos Next Action recommendations
+    const nextActions = await this.cosmosIntegration.getNextActions({
+      caseContext: context,
+      userState: userState,
+      timePressure: timePressure as 'low' | 'medium' | 'high' | 'critical',
+      ethicalConcerns: ethicalConcerns,
+    });
+
+    // Get automation opportunities
+    const automationOpportunities = this.cosmosIntegration.getAutomationOpportunities(context);
+
     // Parse and structure the guidance
     return {
       context_analysis: this.analyzeContext(context),
@@ -128,6 +147,8 @@ export const goodCounsel = new (class extends BaseTool {
       time_pressure_level: timePressure,
       ethical_considerations: ethicalConcerns || [],
       ai_guidance: aiResponse,
+      next_actions: nextActions,  // Cosmos integration
+      automation_opportunities: automationOpportunities,  // Cosmos integration
       recommendations: this.extractRecommendations(aiResponse),
       habit_insights: this.identifyHabitPatterns(context, userState),
       workflow_optimization: this.generateWorkflowOptimizations(aiResponse, timePressure),

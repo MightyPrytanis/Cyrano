@@ -550,7 +550,7 @@ Note: IRAs are not subject to QDRO requirements but may be divided via DRO...
     const domainConfig = this.getDomainConfig(domain);
     if (!domainConfig) return [];
 
-    const analysisTypes = [];
+    const analysisTypes: string[] = [];
 
     // Check request against domain-specific analysis types
     for (const [typeKey, typeDescription] of Object.entries(domainConfig.analysisTypes)) {
@@ -601,7 +601,7 @@ Note: IRAs are not subject to QDRO requirements but may be divided via DRO...
   }
 
   public generateClarificationQuestions(request: string, concepts: string[], domain: string): string[] {
-    const questions = [];
+    const questions: string[] = [];
 
     if (concepts.length === 0) {
       const domainGuidance = {
@@ -667,7 +667,7 @@ Note: IRAs are not subject to QDRO requirements but may be divided via DRO...
   }
 
   public suggestCodePatterns(analysisTypes: string[], domain: string): string[] {
-    const patterns = [];
+    const patterns: string[] = [];
 
     if (domain === 'legal') {
       if (analysisTypes.includes('qdro_analysis')) {
@@ -759,7 +759,7 @@ Note: IRAs are not subject to QDRO requirements but may be divided via DRO...
   }
 
   public findIntegrationPoints(currentCode: string, analysisTypes: string[], domain: string): string[] {
-    const integrationPoints = [];
+    const integrationPoints: string[] = [];
 
     if (domain === 'legal') {
       // Find where to add new analysis methods
@@ -993,7 +993,7 @@ Note: IRAs are not subject to QDRO requirements but may be divided via DRO...
   }
 
   public generateQdroRecommendations(doc1: string, doc2: string): string[] {
-    const recommendations = [];
+    const recommendations: string[] = [];
     if (!/QDRO|qualified domestic relations order/i.test(doc1)) {
       recommendations.push('Consider adding QDRO provisions to Document 1 for retirement account divisions');
     }
@@ -1030,7 +1030,7 @@ Note: IRAs are not subject to QDRO requirements but may be divided via DRO...
   }
 
   public generateRetirementRecommendations(doc1Analysis: any, doc2Analysis: any): string[] {
-    const recommendations = [];
+    const recommendations: string[] = [];
     if (doc1Analysis.accounts_found.length === 0) {
       recommendations.push('Document 1 does not mention retirement accounts - consider adding relevant provisions');
     }

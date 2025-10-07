@@ -73,7 +73,7 @@ export const goodCounsel = new (class extends BaseTool {
       );
 
       if (!hasRequiredKey) {
-        const availableProviders = [];
+        const availableProviders: string[] = [];
         if (perplexityKey) availableProviders.push('perplexity');
         if (openaiKey) availableProviders.push('openai');
         if (anthropicKey) availableProviders.push('anthropic');
@@ -370,7 +370,7 @@ Be specific, practical, and focused on improving legal practice effectiveness wh
   }
 
   public identifyStakeholders(text: string): string[] {
-    const stakeholders = [];
+    const stakeholders: string[] = [];
     if (text.toLowerCase().includes('client')) stakeholders.push('client');
     if (text.toLowerCase().includes('court')) stakeholders.push('court');
     if (text.toLowerCase().includes('opposing counsel')) stakeholders.push('opposing counsel');
@@ -415,7 +415,7 @@ Be specific, practical, and focused on improving legal practice effectiveness wh
   }
 
   public generateStateRecommendations(userState: string): string[] {
-    const recommendations = [];
+    const recommendations: string[] = [];
 
     if (userState.toLowerCase().includes('tired')) {
       recommendations.push('Take scheduled breaks throughout the day');
@@ -446,7 +446,7 @@ Be specific, practical, and focused on improving legal practice effectiveness wh
   }
 
   public identifyHabitPatterns(context: string, userState?: string): any[] {
-    const insights = [];
+    const insights: { habit: string; trigger: string; consequence: string; intervention: string; }[] = [];
 
     if (context.toLowerCase().includes('multiple') && context.toLowerCase().includes('task')) {
       insights.push({
@@ -498,9 +498,7 @@ Be specific, practical, and focused on improving legal practice effectiveness wh
   }
 
   public generateTimeManagementTips(pressure: string): string[] {
-    const tips = [];
-
-    switch (pressure) {
+        const tips: string[] = [];    switch (pressure) {
       case 'critical':
         tips.push('Use Pomodoro technique: 25 minutes focused work + 5 minute breaks');
         tips.push('Prioritize tasks using Eisenhower matrix');
@@ -527,7 +525,7 @@ Be specific, practical, and focused on improving legal practice effectiveness wh
   }
 
   public identifyAutomationOpportunities(aiResponse: string): string[] {
-    const opportunities = [];
+    const opportunities: string[] = [];
 
     if (aiResponse.toLowerCase().includes('document') && aiResponse.toLowerCase().includes('review')) {
       opportunities.push('Document assembly automation');
@@ -548,7 +546,7 @@ Be specific, practical, and focused on improving legal practice effectiveness wh
   }
 
   public suggestDelegationTasks(aiResponse: string): string[] {
-    const tasks = [];
+    const tasks: string[] = [];
 
     if (aiResponse.toLowerCase().includes('research')) {
       tasks.push('Initial legal research');

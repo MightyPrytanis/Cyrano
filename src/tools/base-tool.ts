@@ -1,4 +1,4 @@
-import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types';
+import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 export abstract class BaseTool {
   abstract getToolDefinition(): any;

@@ -2,6 +2,7 @@ import { BaseTool } from './base-tool.js';
 import { z } from 'zod';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
+import { PerplexityService } from '../services/perplexity.js';
 import { CosmosIntegration } from '../services/cosmos-integration.js';
 
 const GoodCounselSchema = z.object({
@@ -200,33 +201,8 @@ Be specific, practical, and focused on improving legal practice effectiveness wh
 
   public async callAIProvider(prompt: string, provider: 'perplexity' | 'openai' | 'anthropic' | 'google' | 'xai' | 'deepseek'): Promise<string> {
     if (provider === 'perplexity') {
-      // Perplexity API integration - using the correct endpoint
-      const response = await fetch('https://api.perplexity.ai/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'sonar',
-          messages: [
-            {
-              role: 'user',
-              content: prompt,
-            }
-          ],
-          max_tokens: 4000,
-          temperature: 0.1,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Perplexity API error: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      return data.choices?.[0]?.message?.content || 'Guidance generation failed';
+      const perplexityService = new PerplexityService({ apiKey: process.env.PERPLEXITY_API_KEY! });
+      return await perplexityService.generateGoodCounselInsights({ context: prompt });
     } else if (provider === 'anthropic') {
       const anthropic = new Anthropic({
         apiKey: process.env.ANTHROPIC_API_KEY,

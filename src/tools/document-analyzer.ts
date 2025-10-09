@@ -2,6 +2,8 @@ import { BaseTool } from './base-tool.js';
 import { z } from 'zod';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
+import { PerplexityService } from '../services/perplexity.js';
+import { apiValidator } from '../utils/api-validator.js';
 
 const DocumentAnalyzerSchema = z.object({
   document_text: z.string().describe('The legal document text to analyze'),
@@ -42,21 +44,31 @@ export const documentAnalyzer = new (class extends BaseTool {
     try {
       const { document_text, analysis_type, focus_areas } = DocumentAnalyzerSchema.parse(args);
 
-      // Validate API keys
-      const openaiKey = process.env.OPENAI_API_KEY;
+      // Check for Perplexity API key first (preferred)
+      const perplexityKey = process.env.PERPLEXITY_API_KEY;
       const anthropicKey = process.env.ANTHROPIC_API_KEY;
+      const openaiKey = process.env.OPENAI_API_KEY;
 
-      if (!openaiKey && !anthropicKey) {
-        return this.createErrorResult('No AI API keys configured. Please set OPENAI_API_KEY or ANTHROPIC_API_KEY environment variables.');
+      if (!perplexityKey && !anthropicKey && !openaiKey) {
+        return this.createErrorResult('No AI API keys configured. Please set PERPLEXITY_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY environment variables.');
       }
 
-      // Use Anthropic as primary, fallback to OpenAI
+      // Use Perplexity as primary (as requested), fallback to others
       let analysis;
+      let provider = 'unknown';
+      
       try {
-        if (anthropicKey) {
+        if (perplexityKey) {
+          const perplexityService = new PerplexityService({ apiKey: perplexityKey });
+          const aiResponse = await perplexityService.analyzeDocument(document_text, analysis_type);
+          analysis = this.parsePerplexityResponse(aiResponse, document_text, analysis_type, focus_areas);
+          provider = 'perplexity';
+        } else if (anthropicKey) {
           analysis = await this.performRealAnalysis(document_text, analysis_type, focus_areas, 'anthropic');
+          provider = 'anthropic';
         } else if (openaiKey) {
           analysis = await this.performRealAnalysis(document_text, analysis_type, focus_areas, 'openai');
+          provider = 'openai';
         }
       } catch (aiError) {
         return this.createErrorResult(`AI analysis failed: ${aiError instanceof Error ? aiError.message : String(aiError)}`);
@@ -66,7 +78,7 @@ export const documentAnalyzer = new (class extends BaseTool {
         analysis_type,
         word_count: document_text.split(' ').length,
         focus_areas: focus_areas || [],
-        ai_provider: anthropicKey ? 'anthropic' : 'openai',
+        ai_provider: provider,
       });
     } catch (error) {
       return this.createErrorResult(`Document analysis failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -285,5 +297,87 @@ Provide a detailed analysis of ${focusArea} aspects, including key findings, pot
   public identifyComplianceRisks(text: string): string[] {
     const riskTerms = ['non-compliance', 'violation', 'penalty', 'fine', 'sanction'];
     return riskTerms.filter(term => text.toLowerCase().includes(term));
+  }
+
+  public parsePerplexityResponse(aiResponse: string, documentText: string, analysisType: string, focusAreas?: string[]): any {
+    const wordCount = documentText.split(' ').length;
+    const paragraphCount = documentText.split('\n\n').length;
+
+    return {
+      metadata: {
+        word_count: wordCount,
+        paragraph_count: paragraphCount,
+        analysis_type: analysisType,
+        timestamp: new Date().toISOString(),
+        ai_provider: 'perplexity',
+      },
+      ai_analysis: aiResponse,
+      key_points: this.extractKeyPoints(aiResponse),
+      summary: this.generateSummary(aiResponse),
+      legal_elements: this.identifyLegalElements(documentText),
+      recommendations: this.generateRecommendations(aiResponse),
+      focused_analysis: focusAreas ? this.performFocusedAnalysisFromResponse(aiResponse, focusAreas) : undefined,
+    };
+  }
+
+  public performFocusedAnalysisFromResponse(aiResponse: string, focusAreas: string[]): Record<string, any> {
+    const result: Record<string, any> = {};
+    
+    for (const area of focusAreas) {
+      switch (area.toLowerCase()) {
+        case 'contracts':
+          result.contracts = this.extractContractAnalysis(aiResponse);
+          break;
+        case 'liability':
+          result.liability = this.extractLiabilityAnalysis(aiResponse);
+          break;
+        case 'compliance':
+          result.compliance = this.extractComplianceAnalysis(aiResponse);
+          break;
+        default:
+          result[area] = `Analysis for ${area} extracted from Perplexity response`;
+      }
+    }
+    
+    return result;
+  }
+
+  public extractContractAnalysis(response: string): any {
+    const contractKeywords = ['contract', 'agreement', 'terms', 'conditions', 'provisions'];
+    const contractMentions = contractKeywords.filter(keyword => 
+      response.toLowerCase().includes(keyword)
+    );
+    
+    return {
+      contract_indicators: contractMentions.length,
+      key_provisions: this.extractKeyProvisions(response),
+      parties_mentioned: this.extractParties(response),
+    };
+  }
+
+  public extractLiabilityAnalysis(response: string): any {
+    const liabilityKeywords = ['liability', 'damages', 'breach', 'negligence', 'risk'];
+    const liabilityMentions = liabilityKeywords.filter(keyword => 
+      response.toLowerCase().includes(keyword)
+    );
+    
+    return {
+      liability_mentions: liabilityMentions.length,
+      risk_factors: this.identifyRiskFactors(response),
+      protection_clauses: this.identifyProtectionClauses(response),
+    };
+  }
+
+  public extractComplianceAnalysis(response: string): any {
+    const complianceKeywords = ['compliance', 'regulation', 'statute', 'law', 'requirement'];
+    const complianceMentions = complianceKeywords.filter(keyword => 
+      response.toLowerCase().includes(keyword)
+    );
+    
+    return {
+      compliance_mentions: complianceMentions.length,
+      required_elements: this.identifyRequiredElements(response),
+      compliance_risks: this.identifyComplianceRisks(response),
+    };
   }
 })();

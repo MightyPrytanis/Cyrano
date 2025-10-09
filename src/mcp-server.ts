@@ -24,6 +24,7 @@ import { documentProcessor } from './tools/document-processor.js';
 import { aiOrchestrator } from './tools/ai-orchestrator.js';
 import { systemStatus } from './tools/system-status.js';
 import { authTool } from './tools/auth.js';  // Add auth tool import
+import { syncManager } from './tools/sync-manager.js';
 import {
   extractConversations,
   extractTextContent,
@@ -71,6 +72,7 @@ class CyranoMCPServer {
           documentProcessor.getToolDefinition(),
           aiOrchestrator.getToolDefinition(),
           systemStatus.getToolDefinition(),
+          syncManager.getToolDefinition(),
           extractConversations.getToolDefinition(),
           extractTextContent.getToolDefinition(),
           categorizeWithKeywords.getToolDefinition(),
@@ -128,6 +130,9 @@ class CyranoMCPServer {
             break;
           case 'system_status':
             result = await systemStatus.execute(args);
+            break;
+          case 'sync_manager':
+            result = await syncManager.execute(args);
             break;
           case 'extract_conversations':
             result = await extractConversations.execute(args);

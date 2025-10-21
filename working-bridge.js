@@ -6,6 +6,19 @@ const port = 5002;
 
 app.use(cors());
 app.use(express.json());
+// Simple Clio integration stub
+app.post('/api/tools/clio_integration', (req, res) => {
+  const { action } = req.body || {};
+  const hasKey = !!process.env.CLIO_API_KEY;
+  if (action === 'status') {
+    return res.json({ connected: hasKey, message: hasKey ? 'Connected (stub)' : 'API key required' });
+  }
+  if (action === 'list_matters') {
+    if (!hasKey) return res.status(401).json({ connected: false, message: 'API key required' });
+    return res.json({ connected: true, matters: [{ id: 'CL-001', name: 'Johnson v Johnson' }] });
+  }
+  return res.json({ connected: hasKey, message: 'Unknown action' });
+});
 
 const tools = [
   {

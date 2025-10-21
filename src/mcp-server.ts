@@ -1,5 +1,21 @@
 #!/usr/bin/env node
 
+/*
+Copyright 2025 Cognisint LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -25,6 +41,8 @@ import { aiOrchestrator } from './tools/ai-orchestrator.js';
 import { systemStatus } from './tools/system-status.js';
 import { authTool } from './tools/auth.js';  // Add auth tool import
 import { syncManager } from './tools/sync-manager.js';
+import { redFlagFinder } from './tools/red-flag-finder.js';
+import { clioIntegration } from './tools/clio-integration.js';
 import {
   extractConversations,
   extractTextContent,
@@ -73,6 +91,8 @@ class CyranoMCPServer {
           aiOrchestrator.getToolDefinition(),
           systemStatus.getToolDefinition(),
           syncManager.getToolDefinition(),
+          redFlagFinder.getToolDefinition(),
+          clioIntegration.getToolDefinition(),
           extractConversations.getToolDefinition(),
           extractTextContent.getToolDefinition(),
           categorizeWithKeywords.getToolDefinition(),
@@ -131,9 +151,15 @@ class CyranoMCPServer {
           case 'system_status':
             result = await systemStatus.execute(args);
             break;
-          case 'sync_manager':
-            result = await syncManager.execute(args);
-            break;
+        case 'sync_manager':
+          result = await syncManager.execute(args);
+          break;
+        case 'red_flag_finder':
+          result = await redFlagFinder.execute(args);
+          break;
+        case 'clio_integration':
+          result = await clioIntegration.execute(args);
+          break;
           case 'extract_conversations':
             result = await extractConversations.execute(args);
             break;

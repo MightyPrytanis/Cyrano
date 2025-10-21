@@ -1,4 +1,11 @@
 # Cyrano MCP Server - Implementation Guide
+*Last Revised: January 9, 2025*
+
+## Change Log
+- **January 9, 2025**: Added help chat system integration, enhanced error reporting, improved API documentation
+- **January 8, 2025**: Implemented installer package support, added comprehensive tool definitions
+- **January 7, 2025**: Created MCP server architecture, implemented tool framework, added AI provider support
+- **January 6, 2025**: Initial implementation with mock tools and basic MCP protocol support
 
 ## ⚠️ IMPORTANT DISCLAIMER
 
@@ -306,7 +313,7 @@ To contribute real AI functionality:
 
 ## License
 
-MIT License - See LICENSE file for details
+This project is licensed under the Apache License 2.0 – see the LICENSE file for details.
 
 ---
 

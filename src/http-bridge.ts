@@ -37,6 +37,7 @@ import { caseManager } from './tools/case-manager.js';
 import { documentProcessor } from './tools/document-processor.js';
 import { aiOrchestrator } from './tools/ai-orchestrator.js';
 import { systemStatus } from './tools/system-status.js';
+import { timeValueBilling } from './tools/time-value-billing.js';
 
 // Import Arkiver tools
 import {
@@ -86,6 +87,7 @@ mcpServer.setRequestHandler(ListToolsRequestSchema, async () => {
       documentProcessor.getToolDefinition(),
       aiOrchestrator.getToolDefinition(),
       systemStatus.getToolDefinition(),
+      timeValueBilling.getToolDefinition(),
       
       // Arkiver Data Extraction Tools
       extractConversations.getToolDefinition(),
@@ -142,6 +144,9 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
             break;
           case 'system_status':
             result = await systemStatus.execute(args);
+            break;
+          case 'time_value_billing':
+            result = await timeValueBilling.execute(args);
             break;
             
           // Arkiver Data Extraction Tools
@@ -203,6 +208,7 @@ app.get('/mcp/tools', async (req, res) => {
       documentProcessor.getToolDefinition(),
       aiOrchestrator.getToolDefinition(),
       systemStatus.getToolDefinition(),
+      timeValueBilling.getToolDefinition(),
       
       // Arkiver Tools
       extractConversations.getToolDefinition(),
@@ -262,6 +268,9 @@ app.post('/mcp/execute', async (req, res) => {
         break;
       case 'system_status':
         result = await systemStatus.execute(input);
+        break;
+      case 'time_value_billing':
+        result = await timeValueBilling.execute(input);
         break;
       case 'extract_conversations':
         result = await extractConversations.execute(input);
@@ -329,7 +338,7 @@ app.get('/health', (req, res) => {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
-    tools_count: 18,
+    tools_count: 19,
     uptime: process.uptime()
   });
 });

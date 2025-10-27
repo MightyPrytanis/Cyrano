@@ -1,207 +1,205 @@
 import { BaseTool } from './base-tool.js';
 import { z } from 'zod';
-import { LocalActivityScanner } from '../services/tvb/sources/local-activity.js';
-import { IMAPEmailConnector } from '../services/tvb/sources/imap-email.js';
-import { WestlawCSVImport } from '../services/tvb/sources/westlaw.js';
-import { ClioClient } from '../services/tvb/sources/clio-client.js';
-import { ValueBillingEngine } from '../services/tvb/value-billing-engine.js';
-import { AnalysisInput, SourceEvent, TimeEntryPayload } from '../services/tvb/types.js';
+import { LLMService } from '../services/llm-service.js';
+import { ValueBillingEngine, WorkEvent, BillingPolicy, RecommendedEntry } from '../services/value-billing-engine.js';
+import { LocalActivityService } from '../services/local-activity.js';
+import { IMAPEmailService, IMAPConfig } from '../services/email-imap.js';
+import { WestlawImportService } from '../services/westlaw-import.js';
+import { ClioClient } from '../services/clio-client.js';
 
-const PeriodSchema = z.object({ start: z.string(), end: z.string() });
+const AnalyzeSchema = z.object({
+  action: z.literal('analyze_period'),
+  start: z.string().describe('Start ISO datetime'),
+  end: z.string().describe('End ISO datetime'),
+  sources: z.object({
+    local_paths: z.array(z.string()).optional(),
+    imap: z.object({
+      host: z.string(),
+      port: z.number(),
+      secure: z.boolean(),
+      user: z.string(),
+      pass: z.string(),
+      mailbox: z.string().optional(),
+    }).optional(),
+    westlaw_csv: z.array(z.string()).optional(),
+    clio: z.object({
+      api_key: z.string(),
+      base_url: z.string().optional(),
+      query: z.record(z.any()).optional(),
+    }).optional(),
+  }).default({}),
+  policy: z.object({
+    mode: z.enum(['value','actual','blended']).default('value'),
+    blendRatio: z.number().optional(),
+    normativeRules: z.array(z.object({
+      task: z.string(),
+      baselineMinutes: z.number(),
+    })).optional(),
+    aiNormative: z.boolean().optional(),
+    minIncrementMinutes: z.number().optional(),
+    roundUp: z.boolean().optional(),
+    capMultiplier: z.number().optional(),
+  }).optional(),
+}).strict();
 
-const IMAPSchema = z.object({
-  host: z.string(),
-  port: z.number(),
-  secure: z.boolean(),
-  user: z.string(),
-  password: z.string(),
-  mailbox: z.string().optional(),
-});
+const PushSchema = z.object({
+  action: z.literal('push_entries'),
+  entries: z.array(z.object({
+    matterId: z.string(),
+    date: z.string(),
+    minutes: z.number(),
+    description: z.string(),
+  })),
+  clio: z.object({ api_key: z.string(), base_url: z.string().optional() }),
+  rate: z.number().optional(),
+  user_id: z.union([z.string(), z.number()]).optional(),
+}).strict();
 
-const SourcesSchema = z.object({
-  local: z.object({ roots: z.array(z.string()), includeGlobs: z.array(z.string()).optional(), excludeGlobs: z.array(z.string()).optional() }).optional(),
-  imap: IMAPSchema.optional(),
-  westlawCsv: z.object({ csvPaths: z.array(z.string()) }).optional(),
-  clio: z.object({ token: z.string().optional() }).optional(),
-});
+const ConfigSchema = z.object({
+  action: z.literal('get_config')
+}).strict();
 
-const FlagsSchema = z.object({
-  allowValueBilling: z.boolean().optional().default(true),
-  normativeStrategy: z.enum(['conservative', 'standard', 'aggressive']).optional().default('standard'),
-  minEntryMinutes: z.number().optional().default(6),
-  roundingIncrement: z.number().optional().default(6),
-  useLLM: z.boolean().optional().default(false),
-});
-
-const ActionSchema = z.object({
-  action: z.enum(['ingest', 'analyze', 'propose', 'push']),
-  period: PeriodSchema,
-  sources: SourcesSchema,
-  matterFilter: z.object({ matterId: z.string().optional(), clientName: z.string().optional(), matterName: z.string().optional() }).optional(),
-  flags: FlagsSchema.optional(),
-  push: z.object({ provider: z.enum(['clio']), dryRun: z.boolean().optional().default(true) }).optional(),
-});
+const InputSchema = z.discriminatedUnion('action', [AnalyzeSchema, PushSchema, ConfigSchema]);
 
 export const timeValueBilling = new (class extends BaseTool {
   getToolDefinition() {
     return {
       name: 'time_value_billing',
-      description:
-        'Aggregate attorney activity across sources and compute value-billing time entries using normative and actual signals.',
+      description: 'Aggregate attorney work across sources and compute value-billing recommendations; optionally push to Clio.',
       inputSchema: {
         type: 'object',
         properties: {
-          action: { type: 'string', enum: ['ingest', 'analyze', 'propose', 'push'] },
-          period: { type: 'object' },
-          sources: { type: 'object' },
-          matterFilter: { type: 'object' },
-          flags: { type: 'object' },
-          push: { type: 'object' },
+          action: { type: 'string', enum: ['analyze_period','push_entries','get_config'] },
         },
-        required: ['action', 'period', 'sources'],
+        required: ['action'],
       },
     };
   }
 
   async execute(args: any) {
     try {
-      const { action, period, sources, matterFilter, flags, push } = ActionSchema.parse(args);
-      const events: SourceEvent[] = [];
-
-      // Gather events from requested sources
-      if (sources.local) {
-        const scanner = new LocalActivityScanner({
-          roots: sources.local.roots,
-          includeGlobs: sources.local.includeGlobs,
-          excludeGlobs: sources.local.excludeGlobs,
-        });
-        const localEvents = await scanner.scan(period);
-        events.push(...localEvents);
+      const parsed = InputSchema.parse(args);
+      switch (parsed.action) {
+        case 'analyze_period':
+          return await this.handleAnalyze(parsed);
+        case 'push_entries':
+          return await this.handlePush(parsed);
+        case 'get_config':
+          return this.createSuccessResult(JSON.stringify({ status: 'ok' }));
+        default:
+          return this.createErrorResult('Unsupported action');
       }
-
-      if (sources.imap) {
-        const connector = new IMAPEmailConnector(sources.imap);
-        const mailEvents = await connector.fetchEvents(period);
-        events.push(...mailEvents);
-      }
-
-      if (sources.westlawCsv) {
-        const importer = new WestlawCSVImport({ csvPaths: sources.westlawCsv.csvPaths });
-        const wlEvents = await importer.import();
-        // filter to period
-        const start = new Date(period.start).getTime();
-        const end = new Date(period.end).getTime();
-        events.push(
-          ...wlEvents.filter((e) => {
-            const t = new Date(e.timestamp).getTime();
-            return t >= start && t <= end;
-          })
-        );
-      }
-
-      if (sources.clio) {
-        const clio = new ClioClient({ token: sources.clio.token });
-        const data = await clio.getActivities({
-          // Clio query params
-          // Use date range if supported; otherwise fetch and filter client-side
-          fields: 'id,description,start_time,end_time,duration,matter,created_at',
-          page: 1,
-          per_page: 200,
-        });
-        const clioEvents = clio.mapActivitiesToEvents(data).filter((e) => {
-          const t = new Date(e.timestamp).getTime();
-          const s = new Date(period.start).getTime();
-          const en = new Date(period.end).getTime();
-          return t >= s && t <= en;
-        });
-        events.push(...clioEvents);
-      }
-
-      // Optional matter filter
-      const filtered = matterFilter
-        ? events.filter((e) => {
-            if (!e.matter) return false;
-            if (matterFilter.matterId && e.matter.matterId !== matterFilter.matterId) return false;
-            if (matterFilter.clientName && e.matter.clientName !== matterFilter.clientName) return false;
-            if (matterFilter.matterName && e.matter.matterName !== matterFilter.matterName) return false;
-            return true;
-          })
-        : events;
-
-      if (action === 'ingest') {
-        return this.createSuccessResult(JSON.stringify({ count: filtered.length, events: filtered }, null, 2));
-      }
-
-      const engine = new ValueBillingEngine();
-      const analysisInput: AnalysisInput = { window: period, events: filtered, flags };
-      const output = await engine.analyze(analysisInput);
-
-      if (action === 'analyze') {
-        return this.createSuccessResult(JSON.stringify(output, null, 2));
-      }
-
-      if (action === 'propose') {
-        const entries: TimeEntryPayload[] = output.proposals.map((p) => ({
-          matterId: p.matter?.matterId,
-          date: p.date,
-          minutes: p.recommendedMinutes,
-          description: `${p.taskLabel} — basis: ${p.basis}; normative: ${p.normativeMinutes}m; actual: ${p.actualMinutes ?? 'n/a'}m;`.
-            concat(p.complexity ? ` complexity: ${p.complexity};` : ''),
-          activityCategory: p.activityCategory,
-          metadata: { taskCode: p.taskCode, sourceEventIds: p.sourceEventIds, confidence: p.confidence },
-        }));
-        return this.createSuccessResult(JSON.stringify({ entries, stats: output.stats }, null, 2));
-      }
-
-      if (action === 'push') {
-        if (!push || push.provider !== 'clio') {
-          return this.createErrorResult('Only Clio push is currently supported.');
-        }
-        const entries: TimeEntryPayload[] = output.proposals.map((p) => ({
-          matterId: p.matter?.matterId,
-          date: p.date,
-          minutes: p.recommendedMinutes,
-          description: `${p.taskLabel} — basis: ${p.basis}; normative: ${p.normativeMinutes}m; actual: ${p.actualMinutes ?? 'n/a'}m;`.
-            concat(p.complexity ? ` complexity: ${p.complexity};` : ''),
-          activityCategory: p.activityCategory,
-          metadata: { taskCode: p.taskCode, sourceEventIds: p.sourceEventIds, confidence: p.confidence },
-        }));
-
-        if (push.dryRun) {
-          return this.createSuccessResult(JSON.stringify({ push: 'dry_run', provider: 'clio', entries }, null, 2));
-        }
-
-        const clio = new ClioClient({ token: sources.clio?.token });
-        const results: any[] = [];
-        for (const entry of entries) {
-          if (!entry.matterId) {
-            results.push({ error: 'Missing matterId', entry });
-            continue;
-          }
-          const payload = {
-            type: 'TimeEntry',
-            description: entry.description,
-            date: entry.date.split('T')[0],
-            matter_id: entry.matterId,
-            quantity: Math.round((entry.minutes / 60) * 100) / 100, // hours with 2 decimals
-            activity_category: entry.activityCategory,
-            // Attach metadata via note or custom field if supported
-          } as any;
-          try {
-            const res = await clio.createActivity(payload);
-            results.push({ ok: true, id: res?.data?.id || res?.id, payload });
-          } catch (err: any) {
-            results.push({ ok: false, error: err.message, payload });
-          }
-        }
-        return this.createSuccessResult(JSON.stringify({ push: 'executed', provider: 'clio', results }, null, 2));
-      }
-
-      return this.createErrorResult('Unknown action');
-    } catch (error) {
-      return this.createErrorResult(
-        `time_value_billing failed: ${error instanceof Error ? error.message : String(error)}`
-      );
+    } catch (err) {
+      return this.createErrorResult(err instanceof Error ? err.message : String(err));
     }
+  }
+
+  private async handleAnalyze(input: z.infer<typeof AnalyzeSchema>) {
+    const llm = new LLMService();
+    const engine = new ValueBillingEngine(llm);
+
+    const events: WorkEvent[] = [];
+
+    // Local files
+    if (input.sources.local_paths && input.sources.local_paths.length) {
+      const local = new LocalActivityService(input.sources.local_paths);
+      const res = await local.scan(input.start, input.end);
+      for (const e of res) {
+        events.push({
+          source: 'local',
+          start: e.mtime,
+          end: e.mtime,
+          minutes: 0,
+          description: `Edited ${e.filePath}`,
+        });
+      }
+    }
+
+    // IMAP
+    if (input.sources.imap) {
+      const imapConf: IMAPConfig = {
+        host: input.sources.imap.host,
+        port: input.sources.imap.port,
+        secure: input.sources.imap.secure,
+        auth: { user: input.sources.imap.user, pass: input.sources.imap.pass },
+        mailbox: input.sources.imap.mailbox,
+      };
+      const imap = new IMAPEmailService(imapConf);
+      const emails = await imap.fetchEvents(input.start, input.end);
+      for (const m of emails) {
+        events.push({
+          source: 'email',
+          date: m.date.slice(0,10),
+          minutes: 6, // minimal reading/compose quantum; policy rounding will adjust
+          description: `Email: ${m.subject}`,
+        });
+      }
+    }
+
+    // Westlaw CSV
+    if (input.sources.westlaw_csv && input.sources.westlaw_csv.length) {
+      const westlaw = new WestlawImportService();
+      const logs = await westlaw.import({ files: input.sources.westlaw_csv });
+      for (const w of logs) {
+        events.push({
+          source: 'westlaw',
+          date: w.date,
+          minutes: w.minutes,
+          description: `Westlaw research${w.description ? ': ' + w.description : ''}`,
+        });
+      }
+    }
+
+    // Clio (optional for evidence)
+    if (input.sources.clio) {
+      const clio = new ClioClient({ apiKey: input.sources.clio.api_key, baseUrl: input.sources.clio.base_url });
+      // If query provided, fetch activities
+      if (input.sources.clio.query) {
+        const data = await clio.list<any>('/activities', input.sources.clio.query);
+        // Map a subset if present
+        const items = Array.isArray((data as any).data) ? (data as any).data : [];
+        for (const a of items) {
+          const d = a.date || a.created_at || a.updated_at;
+          const qtyHrs = a.quantity || 0; // hours decimal
+          const mins = Math.round(Number(qtyHrs) * 60);
+          events.push({
+            source: 'clio',
+            date: d ? new Date(d).toISOString().slice(0,10) : undefined,
+            minutes: isFinite(mins) ? mins : 0,
+            description: a.description || 'Clio activity',
+            matterId: a.matter_id ? String(a.matter_id) : undefined,
+            clientId: a.client_id ? String(a.client_id) : undefined,
+          });
+        }
+      }
+    }
+
+    const policy: BillingPolicy = input.policy || { mode: 'value', aiNormative: true, minIncrementMinutes: 6, roundUp: true };
+    const recs: RecommendedEntry[] = await engine.recommend(events, policy);
+
+    return this.createSuccessResult(JSON.stringify({
+      period: { start: input.start, end: input.end },
+      counts: { events: events.length, recommendations: recs.length },
+      recommendations: recs,
+    }, null, 2));
+  }
+
+  private async handlePush(input: z.infer<typeof PushSchema>) {
+    const clio = new ClioClient({ apiKey: input.clio.api_key, baseUrl: input.clio.base_url });
+    const pushed: any[] = [];
+    for (const e of input.entries) {
+      const hours = e.minutes / 60;
+      const body = {
+        matter_id: e.matterId,
+        date: e.date,
+        quantity: Number(hours.toFixed(2)),
+        description: e.description,
+        rate: input.rate,
+        user_id: input.user_id,
+      };
+      const resp = await clio.createTimeEntry(body as any);
+      pushed.push({ id: resp?.data?.id || null, matter_id: e.matterId, status: 'ok' });
+    }
+    return this.createSuccessResult(JSON.stringify({ pushed }, null, 2));
   }
 })();

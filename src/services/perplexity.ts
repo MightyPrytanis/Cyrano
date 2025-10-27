@@ -57,8 +57,7 @@ export class PerplexityService {
         'Authorization': `Bearer ${this.config.apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(request),
-      timeout: this.config.timeout || 30000
+      body: JSON.stringify(request)
     });
 
     if (!response.ok) {

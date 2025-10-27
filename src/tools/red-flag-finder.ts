@@ -282,7 +282,7 @@ Format the response as JSON with a "red_flags" array containing objects with: de
   }
 
   private extractRedFlagsFromText(text: string) {
-    const flags = [];
+    const flags: Array<{ description: string; urgency: string; recommended_action: string; deadline: string | null; consequences: string; source_text: string; }> = [];
     const lines = text.split('\n').filter(line => line.trim());
     
     for (const line of lines) {
@@ -335,7 +335,7 @@ Format the response as JSON with a "red_flags" array containing objects with: de
     return null;
   }
 
-  private async performRedFlagAnalysis(content: string, documentType?: string, urgencyThreshold: string, provider: 'anthropic' | 'openai') {
+  private async performRedFlagAnalysis(content: string, documentType: string | undefined, urgencyThreshold: string, provider: 'anthropic' | 'openai') {
     const prompt = this.buildRedFlagPrompt(content, documentType, urgencyThreshold);
     
     // This would call the actual AI provider

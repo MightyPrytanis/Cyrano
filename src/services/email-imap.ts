@@ -43,12 +43,13 @@ export class IMAPEmailService {
       } as any;
 
       const events: EmailEvent[] = [];
-      for await (const message of client.fetch(await client.search(query), { envelope: true, size: true })) {
+      const uids = (await client.search(query)) || [];
+      for await (const message of client.fetch(uids, { envelope: true, size: true })) {
         const env = (message as FetchMessageObject).envelope!;
         const subj = env.subject || '';
-        const from = env.from?.map(a => `${a.mailbox}@${a.host}`).join(', ') || '';
-        const to = env.to?.map(a => `${a.mailbox}@${a.host}`) || [];
-        const date = env.date?.toISOString() || new Date().toISOString();
+        const from = env.from?.map(a => a.address || '').filter(Boolean).join(', ') || '';
+        const to = env.to?.map(a => a.address || '').filter(Boolean) || [];
+        const date = env.date instanceof Date ? env.date.toISOString() : (env.date ? String(env.date) : new Date().toISOString());
         events.push({
           source: 'email',
           id: String(message.uid),

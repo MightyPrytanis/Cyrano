@@ -1,8 +1,11 @@
 /**
- * Chronometric Module - Value Billing Engine
+ * Chronometric Module - Work Value Appraiser
  * 
- * Core billing engine that applies normative (value-based) billing principles
- * to source events, generating time entry recommendations.
+ * Core component that appraises the value of work by applying normative (value-based) 
+ * billing principles to source events, generating time entry recommendations.
+ * 
+ * Note: This is a component within the Chronometric Module, not an Engine.
+ * Engines coordinate multiple modules; this appraiser operates within a single module.
  * 
  * Addresses all code review concerns:
  * - Proper type safety (no `as any` casts)
@@ -41,7 +44,7 @@ import {
   DEFAULT_ROUNDING_INCREMENT_MINUTES,
 } from '../constants.js';
 
-export interface BillingEngineResult {
+export interface AppraisalResult {
   proposals: ProposedEntry[];
   duplicates: DuplicateMatch[];
   stats: {
@@ -53,7 +56,7 @@ export interface BillingEngineResult {
   };
 }
 
-export class ValueBillingEngine {
+export class WorkValueAppraiser {
   private llm: LLMService;
   private catalog: NormativeCatalog;
 
@@ -63,18 +66,18 @@ export class ValueBillingEngine {
   }
 
   /**
-   * Generate billing recommendations from source events.
+   * Appraise work value and generate billing recommendations from source events.
    * 
    * @param events Array of source events
    * @param policy Billing policy configuration
    * @param flags Optional engine flags
-   * @returns Billing engine result with proposals and statistics
+   * @returns Appraisal result with proposals and statistics
    */
   async generateRecommendations(
     events: SourceEvent[],
     policy: BillingPolicy,
     flags?: EngineFlags
-  ): Promise<BillingEngineResult> {
+  ): Promise<AppraisalResult> {
     if (events.length === 0) {
       return this.emptyResult();
     }
@@ -429,7 +432,7 @@ Return a JSON array with objects: { index: number, taskCode: string, confidence:
   private calculateStats(
     events: SourceEvent[],
     proposals: ProposedEntry[]
-  ): BillingEngineResult['stats'] {
+  ): AppraisalResult['stats'] {
     const eventsBySource: Record<string, number> = {};
     
     for (const event of events) {
@@ -461,7 +464,7 @@ Return a JSON array with objects: { index: number, taskCode: string, confidence:
    * 
    * @returns Empty billing engine result
    */
-  private emptyResult(): BillingEngineResult {
+  private emptyResult(): AppraisalResult {
     return {
       proposals: [],
       duplicates: [],

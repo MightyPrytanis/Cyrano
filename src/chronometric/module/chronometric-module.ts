@@ -2,7 +2,7 @@
  * Chronometric Module - Main Orchestrator
  * 
  * The Chronometric module for Forensic Time Capture.
- * Orchestrates data source tools and the value billing engine to assist attorneys
+ * Orchestrates data source tools and the work value appraiser to assist attorneys
  * in retrospectively reconstructing lost or unentered billable time.
  * 
  * Architecture: Module layer (composed of Tools, used by Engines/Apps)
@@ -15,7 +15,6 @@ import {
   ProposedEntry,
   BillingPolicy,
   EngineFlags,
-  DuplicateMatch,
 } from '../types/index.js';
 import {
   EmailTool,
@@ -24,17 +23,17 @@ import {
   ClioTool,
 } from '../tools/index.js';
 import {
-  ValueBillingEngine,
-  BillingEngineResult,
-} from './value-billing-engine.js';
+  WorkValueAppraiser,
+  AppraisalResult,
+} from './work-value-appraiser.js';
 
 export interface ChronometricConfig {
   tools: IChronometricTool[];
   billingPolicy?: BillingPolicy;
-  engineFlags?: EngineFlags;
+  appraiserFlags?: EngineFlags;
 }
 
-export interface ChronometricResult extends BillingEngineResult {
+export interface ChronometricResult extends AppraisalResult {
   window: TimeWindow;
   toolsUsed: string[];
 }
@@ -43,32 +42,32 @@ export interface ChronometricResult extends BillingEngineResult {
  * Chronometric Module
  * 
  * Main module for forensic time capture. Coordinates multiple data source tools
- * and applies value billing principles to generate time entry recommendations.
+ * and applies work value appraisal to generate time entry recommendations.
  * 
  * Key Features:
  * - Gap identification: Locates periods with missing time entries
  * - Artifact collection: Gathers evidence from multiple sources
- * - Value billing: Applies normative standards and user policies
+ * - Work value appraisal: Applies normative standards and user policies
  * - Duplicate detection: Prevents client overbilling
  * - Transparency: Provides full provenance for all recommendations
  * - User control: All entries require explicit approval
  */
 export class ChronometricModule {
   private tools: IChronometricTool[];
-  private engine: ValueBillingEngine;
+  private appraiser: WorkValueAppraiser;
   private defaultPolicy: BillingPolicy;
   private defaultFlags: EngineFlags;
 
   constructor(config: ChronometricConfig) {
     this.tools = config.tools;
-    this.engine = new ValueBillingEngine();
+    this.appraiser = new WorkValueAppraiser();
     this.defaultPolicy = config.billingPolicy || {
       mode: 'value',
       aiNormative: true,
       minIncrementMinutes: 6,
       roundUp: true,
     };
-    this.defaultFlags = config.engineFlags || {
+    this.defaultFlags = config.appraiserFlags || {
       allowValueBilling: true,
       normativeStrategy: 'standard',
       minEntryMinutes: 6,
@@ -84,13 +83,13 @@ export class ChronometricModule {
    * Workflow:
    * 1. Fetch events from all configured tools
    * 2. Aggregate and deduplicate events
-   * 3. Apply value billing engine
+   * 3. Apply work value appraiser
    * 4. Detect duplicates
    * 5. Return recommendations with full provenance
    * 
    * @param window Time window to analyze
    * @param policy Optional billing policy override
-   * @param flags Optional engine flags override
+   * @param flags Optional appraiser flags override
    * @returns Chronometric result with recommendations
    */
   async analyze(
@@ -118,11 +117,11 @@ export class ChronometricModule {
       }
     }
 
-    // Step 2: Generate recommendations using the billing engine
+    // Step 2: Appraise work value and generate recommendations
     const finalPolicy = policy || this.defaultPolicy;
     const finalFlags = flags || this.defaultFlags;
 
-    const result = await this.engine.generateRecommendations(
+    const result = await this.appraiser.generateRecommendations(
       allEvents,
       finalPolicy,
       finalFlags

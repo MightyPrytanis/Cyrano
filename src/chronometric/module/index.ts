@@ -5,6 +5,6 @@
  */
 
 export * from './chronometric-module.js';
-export * from './value-billing-engine.js';
+export * from './work-value-appraiser.js';
 export * from './normative-catalog.js';
 export * from './duplicate-detection.js';

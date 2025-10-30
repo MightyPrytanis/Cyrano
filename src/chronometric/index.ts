@@ -8,7 +8,7 @@
  * 
  * Architecture:
  * - Tools: Atomic, single-purpose data fetchers (Email, Files, Westlaw, Clio)
- * - Module: Chronometric orchestrator coordinating tools and billing engine
+ * - Module: Chronometric orchestrator coordinating tools and work value appraiser
  * - Engine: (Future) Higher-level engines like MAE can consume this module
  * - App: LexFiat and other apps can integrate via this module's API
  * 

@@ -150,7 +150,7 @@ export const timeValueBilling = new (class extends BaseTool {
       capMultiplier: input.policy?.capMultiplier,
     };
 
-    // Build engine flags
+    // Build appraiser flags
     const flags: EngineFlags = {
       allowValueBilling: true,
       normativeStrategy: 'standard',
@@ -162,7 +162,7 @@ export const timeValueBilling = new (class extends BaseTool {
     const chronometric = new ChronometricModule({
       tools,
       billingPolicy: policy,
-      engineFlags: flags,
+      appraiserFlags: flags,
     });
 
     const result = await chronometric.analyze(

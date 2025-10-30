@@ -107,7 +107,7 @@ export interface ProposedEntry {
 }
 
 /**
- * Configuration for the billing engine
+ * Configuration for the work value appraiser
  */
 export interface BillingPolicy {
   mode: BillingMode;
@@ -120,7 +120,7 @@ export interface BillingPolicy {
 }
 
 /**
- * Engine configuration flags
+ * Appraiser configuration flags
  */
 export interface EngineFlags {
   allowValueBilling?: boolean;

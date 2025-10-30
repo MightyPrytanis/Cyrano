@@ -1,10 +1,15 @@
 import { BaseTool } from './base-tool.js';
 import { z } from 'zod';
-import { LLMService } from '../services/llm-service.js';
-import { ValueBillingEngine, WorkEvent, BillingPolicy, RecommendedEntry } from '../services/value-billing-engine.js';
-import { LocalActivityService } from '../services/local-activity.js';
-import { IMAPEmailService, IMAPConfig } from '../services/email-imap.js';
-import { WestlawImportService } from '../services/westlaw-import.js';
+import {
+  ChronometricModule,
+  EmailTool,
+  LocalActivityTool,
+  WestlawTool,
+  ClioTool,
+  BillingPolicy,
+  EngineFlags,
+  IChronometricTool,
+} from '../chronometric/index.js';
 import { ClioClient } from '../services/clio-client.js';
 
 const AnalyzeSchema = z.object({
@@ -95,92 +100,109 @@ export const timeValueBilling = new (class extends BaseTool {
   }
 
   private async handleAnalyze(input: z.infer<typeof AnalyzeSchema>) {
-    const llm = new LLMService();
-    const engine = new ValueBillingEngine(llm);
-
-    const events: WorkEvent[] = [];
+    // Build tools based on source configuration
+    const tools: IChronometricTool[] = [];
 
     // Local files
     if (input.sources.local_paths && input.sources.local_paths.length) {
-      const local = new LocalActivityService(input.sources.local_paths);
-      const res = await local.scan(input.start, input.end);
-      for (const e of res) {
-        events.push({
-          source: 'local',
-          start: e.mtime,
-          end: e.mtime,
-          minutes: 0,
-          description: `Edited ${e.filePath}`,
-        });
-      }
+      tools.push(new LocalActivityTool({
+        paths: input.sources.local_paths,
+      }));
     }
 
     // IMAP
     if (input.sources.imap) {
-      const imapConf: IMAPConfig = {
+      tools.push(new EmailTool({
         host: input.sources.imap.host,
         port: input.sources.imap.port,
         secure: input.sources.imap.secure,
-        auth: { user: input.sources.imap.user, pass: input.sources.imap.pass },
+        auth: {
+          user: input.sources.imap.user,
+          pass: input.sources.imap.pass,
+        },
         mailbox: input.sources.imap.mailbox,
-      };
-      const imap = new IMAPEmailService(imapConf);
-      const emails = await imap.fetchEvents(input.start, input.end);
-      for (const m of emails) {
-        events.push({
-          source: 'email',
-          date: m.date.slice(0,10),
-          minutes: 6, // minimal reading/compose quantum; policy rounding will adjust
-          description: `Email: ${m.subject}`,
-        });
-      }
+      }));
     }
 
     // Westlaw CSV
     if (input.sources.westlaw_csv && input.sources.westlaw_csv.length) {
-      const westlaw = new WestlawImportService();
-      const logs = await westlaw.import({ files: input.sources.westlaw_csv });
-      for (const w of logs) {
-        events.push({
-          source: 'westlaw',
-          date: w.date,
-          minutes: w.minutes,
-          description: `Westlaw research${w.description ? ': ' + w.description : ''}`,
-        });
-      }
+      tools.push(new WestlawTool({
+        csvPaths: input.sources.westlaw_csv,
+      }));
     }
 
     // Clio (optional for evidence)
     if (input.sources.clio) {
-      const clio = new ClioClient({ apiKey: input.sources.clio.api_key, baseUrl: input.sources.clio.base_url });
-      // If query provided, fetch activities
-      if (input.sources.clio.query) {
-        const data = await clio.list<any>('/activities', input.sources.clio.query);
-        // Map a subset if present
-        const items = Array.isArray((data as any).data) ? (data as any).data : [];
-        for (const a of items) {
-          const d = a.date || a.created_at || a.updated_at;
-          const qtyHrs = a.quantity || 0; // hours decimal
-          const mins = Math.round(Number(qtyHrs) * 60);
-          events.push({
-            source: 'clio',
-            date: d ? new Date(d).toISOString().slice(0,10) : undefined,
-            minutes: isFinite(mins) ? mins : 0,
-            description: a.description || 'Clio activity',
-            matterId: a.matter_id ? String(a.matter_id) : undefined,
-            clientId: a.client_id ? String(a.client_id) : undefined,
-          });
-        }
-      }
+      tools.push(new ClioTool({
+        apiKey: input.sources.clio.api_key,
+        baseUrl: input.sources.clio.base_url,
+        query: input.sources.clio.query,
+      }));
     }
 
-    const policy: BillingPolicy = input.policy || { mode: 'value', aiNormative: true, minIncrementMinutes: 6, roundUp: true };
-    const recs: RecommendedEntry[] = await engine.recommend(events, policy);
+    // Build billing policy
+    const policy: BillingPolicy = {
+      mode: input.policy?.mode || 'value',
+      blendRatio: input.policy?.blendRatio,
+      aiNormative: input.policy?.aiNormative ?? true,
+      minIncrementMinutes: input.policy?.minIncrementMinutes ?? 6,
+      roundUp: input.policy?.roundUp ?? true,
+      capMultiplier: input.policy?.capMultiplier,
+    };
 
+    // Build engine flags
+    const flags: EngineFlags = {
+      allowValueBilling: true,
+      normativeStrategy: 'standard',
+      useLLM: true,
+      enableDupeCheck: true,
+    };
+
+    // Create and run Chronometric module
+    const chronometric = new ChronometricModule({
+      tools,
+      billingPolicy: policy,
+      engineFlags: flags,
+    });
+
+    const result = await chronometric.analyze(
+      { start: input.start, end: input.end },
+      policy,
+      flags
+    );
+
+    // Format response
     return this.createSuccessResult(JSON.stringify({
-      period: { start: input.start, end: input.end },
-      counts: { events: events.length, recommendations: recs.length },
-      recommendations: recs,
+      period: result.window,
+      toolsUsed: result.toolsUsed,
+      counts: {
+        events: result.stats.totalEvents,
+        proposals: result.stats.totalProposals,
+        duplicates: result.duplicates.length,
+      },
+      stats: result.stats,
+      proposals: result.proposals.map(p => ({
+        id: p.id,
+        matter: p.matter,
+        date: p.date,
+        taskCode: p.taskCode,
+        taskLabel: p.taskLabel,
+        actualMinutes: p.actualMinutes,
+        normativeMinutes: p.normativeMinutes,
+        recommendedMinutes: p.recommendedMinutes,
+        basis: p.basis,
+        description: p.description,
+        activityCategory: p.activityCategory,
+        complexity: p.complexity,
+        confidence: p.confidence,
+        evidenceCount: p.evidence.length,
+      })),
+      duplicates: result.duplicates.map(d => ({
+        entry1Id: d.entry1.id,
+        entry2Id: d.entry2.id,
+        similarity: d.similarity,
+        reasons: d.reasons,
+      })),
     }, null, 2));
   }
 

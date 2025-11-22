@@ -36,8 +36,8 @@ const ClioIntegrationSchema = z.object({
 });
 
 export const clioIntegration = new (class extends BaseTool {
-  private clioApiKey: string;
-  private clioBaseUrl: string = 'https://app.clio.com/api/v4';
+  clioApiKey: string;
+  clioBaseUrl: string = 'https://app.clio.com/api/v4';
 
   constructor() {
     super();
@@ -123,7 +123,8 @@ export const clioIntegration = new (class extends BaseTool {
     }
   }
 
-  private async getItemTracking(itemId: string) {
+  async getItemTracking(itemId?: string) {
+    if (!itemId) return this.createErrorResult('item_id is required');
     if (!this.clioApiKey) {
       return this.getMockItemTracking(itemId);
     }
@@ -142,14 +143,15 @@ export const clioIntegration = new (class extends BaseTool {
       }
 
       const data = await response.json();
-      return this.createSuccessResult(this.formatTrackingData(data));
+      return this.createSuccessResult(JSON.stringify(this.formatTrackingData(data)));
     } catch (error) {
       console.error('Clio API error:', error);
       return this.getMockItemTracking(itemId);
     }
   }
 
-  private async getMatterInfo(matterId: string) {
+  async getMatterInfo(matterId?: string) {
+    if (!matterId) return this.createErrorResult('matter_id is required');
     if (!this.clioApiKey) {
       return this.getMockMatterInfo(matterId);
     }
@@ -167,14 +169,15 @@ export const clioIntegration = new (class extends BaseTool {
       }
 
       const data = await response.json();
-      return this.createSuccessResult(this.formatMatterInfo(data));
+      return this.createSuccessResult(JSON.stringify(this.formatMatterInfo(data)));
     } catch (error) {
       console.error('Clio API error:', error);
       return this.getMockMatterInfo(matterId);
     }
   }
 
-  private async getWorkflowStatus(itemId: string) {
+  async getWorkflowStatus(itemId?: string) {
+    if (!itemId) return this.createErrorResult('item_id is required');
     if (!this.clioApiKey) {
       return this.getMockWorkflowStatus(itemId);
     }
@@ -193,14 +196,15 @@ export const clioIntegration = new (class extends BaseTool {
       }
 
       const data = await response.json();
-      return this.createSuccessResult(this.formatWorkflowStatus(data));
+      return this.createSuccessResult(JSON.stringify(this.formatWorkflowStatus(data)));
     } catch (error) {
       console.error('Clio API error:', error);
       return this.getMockWorkflowStatus(itemId);
     }
   }
 
-  private async getClientInfo(clientId: string) {
+  async getClientInfo(clientId?: string) {
+    if (!clientId) return this.createErrorResult('client_id is required');
     if (!this.clioApiKey) {
       return this.getMockClientInfo(clientId);
     }
@@ -218,14 +222,15 @@ export const clioIntegration = new (class extends BaseTool {
       }
 
       const data = await response.json();
-      return this.createSuccessResult(this.formatClientInfo(data));
+      return this.createSuccessResult(JSON.stringify(this.formatClientInfo(data)));
     } catch (error) {
       console.error('Clio API error:', error);
       return this.getMockClientInfo(clientId);
     }
   }
 
-  private async getDocumentInfo(documentId: string) {
+  async getDocumentInfo(documentId?: string) {
+    if (!documentId) return this.createErrorResult('document_id is required');
     if (!this.clioApiKey) {
       return this.getMockDocumentInfo(documentId);
     }
@@ -243,14 +248,14 @@ export const clioIntegration = new (class extends BaseTool {
       }
 
       const data = await response.json();
-      return this.createSuccessResult(this.formatDocumentInfo(data));
+      return this.createSuccessResult(JSON.stringify(this.formatDocumentInfo(data)));
     } catch (error) {
       console.error('Clio API error:', error);
       return this.getMockDocumentInfo(documentId);
     }
   }
 
-  private async getCalendarEvents(parameters: any) {
+  async getCalendarEvents(parameters: any) {
     if (!this.clioApiKey) {
       return this.getMockCalendarEvents();
     }
@@ -269,14 +274,14 @@ export const clioIntegration = new (class extends BaseTool {
       }
 
       const data = await response.json();
-      return this.createSuccessResult(this.formatCalendarEvents(data));
+      return this.createSuccessResult(JSON.stringify(this.formatCalendarEvents(data)));
     } catch (error) {
       console.error('Clio API error:', error);
       return this.getMockCalendarEvents();
     }
   }
 
-  private async searchMatters(parameters: any) {
+  async searchMatters(parameters: any) {
     if (!this.clioApiKey) {
       return this.getMockMatters();
     }
@@ -295,14 +300,14 @@ export const clioIntegration = new (class extends BaseTool {
       }
 
       const data = await response.json();
-      return this.createSuccessResult(this.formatMatters(data));
+      return this.createSuccessResult(JSON.stringify(this.formatMatters(data)));
     } catch (error) {
       console.error('Clio API error:', error);
       return this.getMockMatters();
     }
   }
 
-  private async getRedFlags(parameters: any) {
+  async getRedFlags(parameters: any) {
     if (!this.clioApiKey) {
       return this.getMockRedFlags();
     }
@@ -327,7 +332,7 @@ export const clioIntegration = new (class extends BaseTool {
       }
 
       const data = await response.json();
-      return this.createSuccessResult(this.formatRedFlags(data));
+      return this.createSuccessResult(JSON.stringify(this.formatRedFlags(data)));
     } catch (error) {
       console.error('Clio API error:', error);
       return this.getMockRedFlags();
@@ -554,7 +559,7 @@ export const clioIntegration = new (class extends BaseTool {
     };
   }
 
-  private formatRedFlags(data: any) {
+  formatRedFlags(data: any) {
     return {
       red_flags: data.data?.map((item: any) => ({
         id: item.id,
@@ -569,7 +574,7 @@ export const clioIntegration = new (class extends BaseTool {
   }
 
   // Helper methods
-  private determineCurrentStage(data: any): string {
+  determineCurrentStage(data: any): string {
     // Logic to determine current workflow stage based on Clio data
     if (data.status === 'draft') return 'Draft Preparation';
     if (data.status === 'review') return 'Attorney Review';
@@ -577,20 +582,20 @@ export const clioIntegration = new (class extends BaseTool {
     return 'AI Analysis';
   }
 
-  private determinePriority(data: any): string {
+  determinePriority(data: any): string {
     if (data.urgent || data.priority === 'urgent') return 'Critical';
     if (data.due_date && this.isDueSoon(data.due_date)) return 'High';
     return 'Medium';
   }
 
-  private isDueSoon(dueDate: string): boolean {
+  isDueSoon(dueDate: string): boolean {
     const due = new Date(dueDate);
     const now = new Date();
     const hoursUntilDue = (due.getTime() - now.getTime()) / (1000 * 60 * 60);
     return hoursUntilDue <= 24;
   }
 
-  private formatWorkflowProgress(data: any): any[] {
+  formatWorkflowProgress(data: any): any[] {
     // Generate workflow progress based on Clio activities/tasks
     return [
       { stage: 'AI Analysis', status: 'completed', timestamp: data.created_at },
@@ -601,27 +606,27 @@ export const clioIntegration = new (class extends BaseTool {
     ];
   }
 
-  private calculateProgress(data: any): number {
+  calculateProgress(data: any): number {
     // Calculate progress percentage based on workflow stages
     const stages = this.formatWorkflowProgress(data);
     const completedStages = stages.filter(stage => stage.status === 'completed').length;
     return Math.round((completedStages / stages.length) * 100);
   }
 
-  private generateNextActions(data: any): string[] {
-    const actions = [];
+  generateNextActions(data: any): string[] {
+    const actions: string[] = [];
     if (data.status === 'draft') actions.push('Review AI-generated draft');
     if (data.status === 'review') actions.push('Complete attorney review');
     if (data.due_date && this.isDueSoon(data.due_date)) actions.push('Prepare for immediate filing');
     return actions;
   }
 
-  private formatAddress(data: any): string {
+  formatAddress(data: any): string {
     const parts = [data.address1, data.address2, data.city, data.state, data.zip];
     return parts.filter(part => part).join(', ');
   }
 
-  private calculateDuration(start: string, end: string): number {
+  calculateDuration(start: string, end: string): number {
     const startTime = new Date(start);
     const endTime = new Date(end);
     return Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60)); // minutes

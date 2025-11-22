@@ -43,6 +43,7 @@ import { authTool } from './tools/auth.js';  // Add auth tool import
 import { syncManager } from './tools/sync-manager.js';
 import { redFlagFinder } from './tools/red-flag-finder.js';
 import { clioIntegration } from './tools/clio-integration.js';
+  import { timeValueBilling } from './tools/time-value-billing.js';
 import {
   extractConversations,
   extractTextContent,
@@ -100,6 +101,7 @@ class CyranoMCPServer {
           generateCategorizedFiles.getToolDefinition(),
           runExtractionPipeline.getToolDefinition(),
           createArkiverConfig.getToolDefinition(),
+          timeValueBilling.getToolDefinition(),
         ],
       };
     });
@@ -180,6 +182,9 @@ class CyranoMCPServer {
             break;
           case 'create_arkiver_config':
             result = await createArkiverConfig.execute(args);
+            break;
+          case 'time_value_billing':
+            result = await timeValueBilling.execute(args);
             break;
           default:
             throw new Error(`Unknown tool: ${name}`);

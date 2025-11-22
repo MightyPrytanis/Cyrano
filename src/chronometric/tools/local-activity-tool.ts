@@ -60,7 +60,13 @@ export class LocalActivityTool implements IChronometricTool {
     ];
 
     for (const basePath of this.config.paths) {
-      const patterns = extensions.map((ext) => `${basePath}/**/*.${ext}`);
+      const patterns = extensions.map((ext) => {
+        if (ext === '*') {
+          return `${basePath}/**/*`;
+        }
+        const normalizedExt = ext.startsWith('.') ? ext.slice(1) : ext;
+        return `${basePath}/**/*.${normalizedExt}`;
+      });
       
       const files = await fastGlob(patterns, {
         ignore: excludePatterns,
